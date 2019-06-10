@@ -29,9 +29,10 @@ The scripts include:
 Please save the above 2 files in the same directory.
 
 Script can be downloaded form:
-1. Github (TBD)
+1. Github: https://github.com/minzhuogoogle/gke-on-prem
 2. GCS Bucket gs://anthos_ready_test_script/
    Google Cloud SDK is required to be installed to access GCS bucket.
+3. Executable python binary ( TBD)
 
 
 
