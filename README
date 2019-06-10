@@ -1,0 +1,129 @@
+Summary
+-------
+The script gke_onprem_test is a sanity verification tool for GKE On-Prem
+deployment.
+
+Prerequisite
+------------
+An existing GKE On-Prem deployment is DUT and is required before running the
+script.
+
+In addition to an existing GKE On-Prem deployment there are a few requirments
+for wrokstation where script is going to run.
+1. Workstation should have kubectl installed.
+2. Workstation should have gkectl installed.
+3. Workstation should have python installed.
+4. Workstation should have ip access to server's ip for both admin and user
+   cluster.
+5. If desired testlog can be uploaded to  Google Cloud Storage bucket.
+   Scripe can load service account to have  it authenticated for GCS bucket.
+6. Script requires admin cluster kubecfg file and user cluster kubecfg file,
+   which should be provided by partner.
+7. Script requires VIP for workload load-balancer testing.
+
+Where to get test script
+------------------------
+The scripts include:
+    * test script gke_onprem_test.py
+    * test script libarary iteroopen.py
+Please save the above 2 files in the same directory.
+
+Script can be downloaded form:
+1. Github (TBD)
+2. GCS Bucket gs://anthos_ready_test_script/
+   Google Cloud SDK is required to be installed to access GCS bucket.
+
+
+
+How to run it
+------------------------
+Before running the testing script copy admin and user cluster kubeconfig files
+to the same directory.
+
+When running script provide path to admin and user cluster config files, admin
+cluster config file name, user cluster config file name and VIP for workload
+load-balancer.
+
+ubuntu@admin-ga-6:~/anthos_ready$ ./gke_onprem_test.py -h
+usage: gke_onprem_test.py [-h] -clustercfgpath CLUSTERCFGPATH -adminclustercfg
+                          ADMCFG -userclustercfg USERCFG -lbsvcip LBSVCIP
+                          [-anthostestlog ANTHOSTESTLOG]
+                          [-gcsbucket GCSBUCKET] [-serviceacct SERVICEACCT]
+                          [-testloop TESTLOOP]
+                          [-abortonfailure ABORTONFAILURE] [-partner PARTNER]
+                          [-platform PLATFORM] [-version VERSION]
+                          [-upgrade UPGRADE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -clustercfgpath CLUSTERCFGPATH, --clustercfgpath CLUSTERCFGPATH
+  -adminclustercfg ADMCFG, --adminclustercfg ADMCFG
+  -userclustercfg USERCFG, --userclustercfg USERCFG
+  -lbsvcip LBSVCIP, --lbsvcip LBSVCIP
+  -anthostestlog ANTHOSTESTLOG, --anthostestlog ANTHOSTESTLOG
+  -gcsbucket GCSBUCKET, --gcsbucket GCSBUCKET
+  -serviceacct SERVICEACCT, --serviceacct SERVICEACCT
+  -testloop TESTLOOP, --testloop TESTLOOP
+  -abortonfailure ABORTONFAILURE, --abortonfailure ABORTONFAILURE
+  -partner PARTNER, --partner PARTNER
+  -platform PLATFORM, --platform PLATFORM
+  -version VERSION, --version VERSION
+  -upgrade UPGRADE, --upgrade UPGRADE
+ubuntu@admin-ga-6:~/anthos_ready$
+
+Sample script run command:
+-----------------------------
+1. Run Test  and abort test if test fails in the user cluster
+/gke_onprem_test.py  -clustercfgpath /home/ubuntu/anthos_ready/kubecfg
+-adminclustercfg kubeconfig.cpe.1 -userclustercfg cpe-user-1-1-kubeconfig
+-lbsvcip 100.115.253.112   --gcsbucket gs://anthos_ready_test_log  --abortonfail True --testloop 1 --serviceacct /home/ubuntu/vsphere/release-reader-key.json
+
+2. Run Test  and continue regardless whether test fails or not
+/gke_onprem_test.py  -clustercfgpath /home/ubuntu/anthos_ready/kubecfg
+-adminclustercfg kubeconfig.cpe.1 -userclustercfg cpe-user-1-1-kubeconfig
+-lbsvcip 100.115.253.112   --gcsbucket gs://anthos_ready_test_log --testloop 1 --serviceacct /home/ubuntu/vsphere/release-reader-key.json
+
+
+Sample test output:
+--------------------
+2019-06-07 17:28:09,093 - INFO - Summary:
+2019-06-07 17:28:09,093 - INFO -     partner: Google, platform: G-Super, version: 1.1
+2019-06-07 17:28:09,093 - INFO -     admin cluster version: 1.11.2-gke.31, user cluster version: 1.11.2-gke.31
+2019-06-07 17:28:09,093 - INFO -     Total Tests: 23, Passed Tests: 21, Failed Tests: 2
+2019-06-07 17:28:09,093 - INFO - ==========================================================================================================
+2019-06-07 17:28:09,093 - INFO -       test_cluster_sanity:PASS:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,093 - INFO -       test_machinedeployment_update:PASS:Increase and decrease number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,093 - INFO -       test_machinedeployment_update:PASS:Increase and decrease number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,093 - INFO -       test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-1-1.
+2019-06-07 17:28:09,093 - INFO -       test_cluster_sanity:PASS:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,093 - INFO -       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
+2019-06-07 17:28:09,094 - INFO -       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
+2019-06-07 17:28:09,094 - INFO -       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 3.
+2019-06-07 17:28:09,094 - INFO -       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
+2019-06-07 17:28:09,094 - INFO -       test_workload_accessiable_via_lbsvcip:FAIL:Verify service provided by workload is accessiable via LBIP 100.115.253.112 in cluster cpe-user-1-1.
+2019-06-07 17:28:09,094 - INFO -       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
+2019-06-07 17:28:09,094 - INFO -       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
+2019-06-07 17:28:09,094 - INFO -       test_cluster_sanity:PASS:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,094 - INFO -       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
+2019-06-07 17:28:09,094 - INFO -       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
+2019-06-07 17:28:09,094 - INFO -       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 6.
+2019-06-07 17:28:09,094 - INFO -       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
+2019-06-07 17:28:09,094 - INFO -       test_workload_accessiable_via_lbsvcip:FAIL:Verify service provided by workload is accessiable via LBIP 100.115.253.112 in cluster cpe-user-1-1.
+2019-06-07 17:28:09,094 - INFO -       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
+2019-06-07 17:28:09,094 - INFO -       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
+2019-06-07 17:28:09,094 - INFO -       test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-1-1.
+2019-06-07 17:28:09,094 - INFO -       test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig in namespace nginx-sanity-ns.
+2019-06-07 17:28:09,094 - INFO -       test_cluster_sanity:PASS:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
+2019-06-07 17:28:09,094 - INFO - ==========================================================================================================
+
+Version History
+-----------------
+V1.0  June 2019
+
+FAQ
+-----
+
+
+Contact
+-------
+anthos-platform-ready@google.com
