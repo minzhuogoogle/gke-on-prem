@@ -90,7 +90,7 @@ Sample test output:
 2019-06-07 17:28:09,093 - INFO - Summary:
 2019-06-07 17:28:09,093 - INFO -     partner: Google, platform: G-Super, version: 1.1
 2019-06-07 17:28:09,093 - INFO -     admin cluster version: 1.11.2-gke.31, user cluster version: 1.11.2-gke.31
-2019-06-07 17:28:09,093 - INFO -     Total Tests: 23, Passed Tests: 21, Failed Tests: 2
+2019-06-07 17:28:09,093 - INFO -     Total Tests: 23, Passed Tests: 21, Failed Tests: 0
 2019-06-07 17:28:09,093 - INFO - ==========================================================================================================
 2019-06-07 17:28:09,093 - INFO -       test_cluster_sanity:PASS:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
 2019-06-07 17:28:09,093 - INFO -       test_machinedeployment_update:PASS:Increase and decrease number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
