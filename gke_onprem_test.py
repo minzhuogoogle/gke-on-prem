@@ -305,7 +305,7 @@ class gkeonpremcluster:
         count = 0
         interval = 1
         while count < retry and (not unavailablereplicas == 0 or not availablereplicas == updatedreplicas or not readyreplicas == updatedreplicas):
-            print "polling ready machine for {} times, ".format(count), "continue? {}".format(count < retry)
+            print "polling ready machine, ".format(count), "continue? {}".format(count < retry)
             cmdline = 'kubectl --kubeconfig {} describe machinedeployments {} | grep Replicas'.format(self.clustercfgfile, self.clustername)
             self.detaillog.detail2file(cmdline)
             retcode, retoutput = RunCmd(cmdline, 15, None, wait=2, counter=0)
