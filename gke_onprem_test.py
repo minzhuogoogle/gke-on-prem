@@ -1,6 +1,6 @@
 #!/usr/bin/env python
+from __future__ import with_statement
 import logging
-import iterpopen
 import sys
 import time
 import os
@@ -8,6 +8,7 @@ import datetime
 import re
 import argparse
 import subprocess
+import importlib
 
 
 test_results = [] 
@@ -65,12 +66,16 @@ spec:
 
 workloadyaml = 'nginx.yaml'
 patchnodeyaml = "patch.node.yaml"
-http_http_target_string = 'Welcome to nginx!'
+http_target_string = 'Welcome to nginx!'
 
 
 def create_yaml_file_from_string(yaml_string, yaml_file):
-    with open(yaml_file, 'w') as writer:
-        writer.write(yaml_string)
+    try:
+         with open(yaml_file, 'w') as writer:
+             writer.write(yaml_string)
+    except EnvironmentError: 
+        print 'Oops: open file {} for write fails.'.format(yaml_file)
+        exit()
 
 def send_log_to_stdout():
     root = logging.getLogger()
@@ -82,8 +87,26 @@ def send_log_to_stdout():
     root.addHandler(handler)
 
 def env_prepare():
-    package_install_cli ='sudo apt-get install python-pip -y; pip install six; sudo apt-get install apache2-utils -y'
-    (retcode, retOuput) = RunCmd(package_install_cli, 15, None, wait=2, counter=0)
+    cmdline = "pip list"
+    retOutput = subprocess.check_output(cmdline.split())
+    #print cmdline, retOutput
+    if not "six" in retOutput or True:
+        package_install_cli ='sudo apt-get install python-pip -y'
+        retOutput = subprocess.check_output(cmdline.split())
+        #print package_install_cli, retOutput
+        package_install_cli = 'pip install six'
+        retOutput = subprocess.check_output(cmdline.split())
+        #print package_install_cli, retOutput
+
+    lib = 'iterpopen'
+    globals()[lib] = importlib.import_module(lib)
+    cmdline =  "sudo apt list --installed"
+    (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=0)
+    #print cmdline, retOutput
+    if not "apache2-utils" in retOutput:
+        package_install_cli ='sudo apt-get install apache2-utils -y'
+        (retcode, retOutput) = RunCmd(package_install_cli, 15, None, wait=2, counter=0)
+        #print package_install_cli, retOutput
 
 def env_check():
     cmdline = "kubectl --help"
@@ -126,8 +149,6 @@ def RunCmd(cmd, timeout, output_file=None, wait=2, counter=3, **kwargs):
     output, err = bash.communicate()
     if bash.returncode != 0 and not kwargs.get('no_raise'):
         print "Fail to run cmd {}".format(cmd)
-    #  raise CommandFailError(
-    #      'Command failed:%s: %s, %s' % (bash.returncode, output, err))
     return bash.returncode, output, err
 
   rc, out, err = RetryCmd(cmd, timeout, output_file)
@@ -138,13 +159,15 @@ def RunCmd(cmd, timeout, output_file=None, wait=2, counter=3, **kwargs):
 def gcp_auth(serviceacct):
     # gcloud auth activate-service-account --key-file=release-reader-key.json
     cmdline = 'gcloud auth activate-service-account --key-file={}'.format(serviceacct)
+    print cmdline
     (retcode, retOuput) = RunCmd(cmdline, 15, None, wait=2, counter=0)
+    print retOuput
     if retcode == 1:
         print "Failure to run cmd {}".format(cmdline)
+    return retcode    
 
 def upload_testlog(testlog, gcs_bucket):
-    """Upload test log to gcc bucket.
-
+    """Upload test log to gcs bucket.
     Args:
       testlog: the full path of testlog file
       gcs_bucket: the gcs bucket identifier
@@ -160,13 +183,12 @@ def upload_testlog(testlog, gcs_bucket):
         return False, errmsg
     return True, cmdoutput
 
-def check_service_availbility(svc_endpoint, http_http_target_string, testreportlog):
+def check_service_availbility(svc_endpoint, testreportlog):
     cmdline = 'curl -s http://{}/index.html'.format(svc_endpoint)
     (retcode, cmdOutput) = RunCmd(cmdline, 10, None, wait=2, counter=0)
     testreportlog.detail2file(cmdline)
-    # cmdoutput = subprocess.check_output(cmdline.split())
     testreportlog.detail2file(cmdOutput)
-    if http_http_target_string in cmdOutput:
+    if http_target_string in cmdOutput:
         return True
     else:
         return False
@@ -196,7 +218,6 @@ def get_info_from_workload_yaml_file():
     if matched:
         servicetype = matched.group(1)
     return namespace, replicas, deployment, servicetype
-
 
 class testlog:
 
@@ -268,7 +289,10 @@ class gkeonpremcluster:
     def get_cluster_name(self):
         cmdline = 'kubectl --kubeconfig {} get cluster'.format(self.clustercfgfile)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            self.clustername = None 
         self.detaillog.detail2file(cmdoutput)
         pattern = re.compile(r"([a-zA-Z\d\-]+)\s+(\d+)(s|d|m|h)")
         if pattern.search(cmdoutput) != None:
@@ -279,8 +303,12 @@ class gkeonpremcluster:
     def get_gke_version(self):
         self.control_version = None
         cmdline = 'kubectl --kubeconfig {} describe cluster {}'.format(self.clustercfgfile, self.clustername)
+                
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+             cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+              self.control_version = None     
         self.detaillog.detail2file(cmdoutput)
         #Control Plane Version:    1.11.2-gke.31
         pattern = re.compile(r"Control\sPlane\sVersion:\s*([a-zA-Z\d\-\.]+)")
@@ -301,9 +329,9 @@ class gkeonpremcluster:
         readyreplicas = 0
         updatedreplicas = -2 
         # change this
-        retry = 1
+        retry = 6
         count = 0
-        interval = 1
+        interval = 20
         while count < retry and (not unavailablereplicas == 0 or not availablereplicas == updatedreplicas or not readyreplicas == updatedreplicas):
             print "polling ready machine, ".format(count), "continue? {}".format(count < retry)
             cmdline = 'kubectl --kubeconfig {} describe machinedeployments {} | grep Replicas'.format(self.clustercfgfile, self.clustername)
@@ -342,7 +370,11 @@ class gkeonpremcluster:
     def check_cluster_server_connectivity(self):
         cmdline = 'ping {} -c 5'.format(self.serverip)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+    
         self.detaillog.detail2file(cmdoutput)
         pattern = re.compile(r"5 packets transmitted, 5 received, 0% packet loss")
         if pattern.search(cmdoutput) != None:
@@ -374,9 +406,12 @@ class gkeonpremcluster:
     def dump_cluster_all(self):
         cmdline = 'kubectl --kubeconfig {} get all --all-namespaces'.format(self.clustercfgfile)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+    
         self.detaillog.detail2file(cmdoutput)
-#        print "the output", cmdoutput
         return cmdoutput
 
 
@@ -386,13 +421,23 @@ class gkeonpremcluster:
         if not namespace in self.objectsList:
             cmdline = 'kubectl --kubeconfig {} create namespace {}'.format(self.clustercfgfile, namespace)
             self.detaillog.detail2file(cmdline)
-            cmdoutput = subprocess.check_output(cmdline.split())
+            try:
+                cmdoutput = subprocess.check_output(cmdline.split())
+            except Exception as e:
+                print "Run cmd {} fails.".format(cmdline)
+    
             self.detaillog.detail2file(cmdoutput)
 
         self.detaillog.detail2file("Generating test service deployment")
         cmdline = 'kubectl --kubeconfig {} apply -f {}'.format(self.clustercfgfile, workloadyaml)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+            self.detaillog.detail2file(cmdoutput)
+            return 1
+
         self.detaillog.detail2file(cmdoutput)
 
         return cmdoutput
@@ -401,24 +446,42 @@ class gkeonpremcluster:
         self.detaillog.detail2file("Removing test service deployment")
         cmdline = 'kubectl --kubeconfig {} delete -f {}'.format(self.clustercfgfile, workloadyaml)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+            self.detaillog.detail2file(cmdoutput)
+            return 1
+
         self.detaillog.detail2file(cmdoutput)
         return cmdoutput
 
     def delete_namespace(self, namespace):
         cmdline = 'kubectl --kubeconfig {} delete namespace {}'.format(self.clustercfgfile, namespace)
         self.detaillog.detail2file(cmdline)
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+            self.detaillog.detail2file(cmdoutput)
+            return 1
+
         self.detaillog.detail2file(cmdoutput)
         self.objectsList.remove(namespace)
         return cmdoutput
 
     def workload_replica_modify(self, deployment_name, workloadns, new_replica):
         #kubectl --kubeconfig kubecfg/userclustercfg scale --replicas=4 deployment/nginx-sanity-test
+
         cmdline = 'kubectl --kubeconfig {} scale --replicas={} deployment/{} -n {}'.format(self.clustercfgfile, new_replica, deployment_name, workloadns)
         self.detaillog.detail2file(cmdline)
-
-        cmdoutput = subprocess.check_output(cmdline.split())
+        try: 
+            cmdoutput = subprocess.check_output(cmdline.split())
+        except Exception as e:
+            print "Run cmd {} fails.".format(cmdline)
+            self.detaillog.detail2file(cmdoutput)
+            return 1
+    
         self.detaillog.detail2file(cmdoutput)
 
         return cmdoutput
@@ -435,11 +498,12 @@ class gkeonpremcluster:
         cmdline = 'kubectl --kubeconfig {} patch machinedeployment {} --patch "$(cat patch.node.yaml)"  --type=merge'.format(self.clustercfgfile, self.clustername)
         (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=0)
         self.detaillog.detail2file(retOutput)
+        return retcode
 
 
     def gkectl_diagnose_cluster(self):
         # change this
-        retry = 2
+        retry = 3
         interval = 10 
         resultpending = True
         cmdoutput = ""
@@ -471,8 +535,11 @@ class gkeonpremcluster:
 
         cmdline = 'kubectl --kubeconfig {} get namespace'.format(self.clustercfgfile)
         self.detaillog.detail2file(cmdline)
+        try:
+            cmdoutput = subprocess.check_output(cmdline.split()).splitlines()[1:] 
+        except Exception as e:
+             print "Run cmd {} fails.".format(cmdline)
 
-        cmdoutput = subprocess.check_output(cmdline.split()).splitlines()[1:] 
         for eachline in cmdoutput:
             self.detaillog.detail2file(eachline)
 
@@ -505,10 +572,14 @@ class gkeonpremcluster:
         cmdline = 'kubectl --kubeconfig {} get all -n {}'.format(self.clustercfgfile, namespace)
         self.detaillog.detail2file(cmdline)
         while count < retry and not stable_state: 
-            cmdoutput = subprocess.check_output(cmdline.split()).splitlines()[1:]
+            try:
+                cmdoutput = subprocess.check_output(cmdline.split()).splitlines()[1:]
+            except Exception as e:
+                print "Run cmd {} fails.".format(cmdline)
+    
             for eachline in cmdoutput:
                 self.detaillog.detail2file(eachline)
-            if not "pending" in cmdoutput:
+            if not "pending" in cmdoutput and not "ContainerCreating" in cmdoutput and not "Terminating" in cmdoutput:
                 stable_state = True
             else:
                 time.sleep(internal)
@@ -614,15 +685,15 @@ def test_machinedeployment_update(usercluster, testreportlog, abortonfailure):
     delta = 1
     interval = 20
     test_result="FAIL"
-    test_detail = "Increase and decrease number of machine deployment for cluster defined by {}.".format(usercluster.clustercfgfile)
     test_name = "test_machinedeployment_update"
     usercluster.get_number_machine_deployments()
-    usercluster.readyreplicas = max(4, usercluster.readyreplicas)
-    for newmachine in [usercluster.readyreplicas+delta, usercluster.readyreplicas-delta]: 
-        test_result=="FAIL"
-        count = 1
+    tempnode = max(3, usercluster.readyreplicas)
+    for newmachine in [tempnode+delta, tempnode]: 
+        test_detail = "Modify number of machine deployment for cluster defined by {} to {}.".format(usercluster.clustercfgfile, newmachine)
+        test_result = "FAIL"
+        count = 0
         usercluster.change_number_of_machine_deployment(newmachine, patchnodeyaml)
-        while count < retry and test_result=="FAIL": 
+        while count < retry and test_result == "FAIL": 
             usercluster.get_number_machine_deployments()
             if usercluster.readyreplicas == newmachine:
                 test_result = "PASS"
@@ -645,7 +716,6 @@ def test_workload_deployment(usercluster, lbsvcip, testreportlog, abortonfailure
     test_name = "test_workload_deployment"
     yaml_string = "{}  loadBalancerIP: {}".format(nginx_yaml_string, lbsvcip)
     create_yaml_file_from_string(yaml_string, workloadyaml)
-
     retOutput = usercluster.workload_deployment()
     testreportlog.detail2file(retOutput)
     if "created" in retOutput:
@@ -769,11 +839,11 @@ def test_workload_replica_state(usercluster, workloadns, expected_number, testre
     return  test_result == "PASS"
 
 
-def test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, http_http_target_string, testreportlog, abortonfailure):
+def test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
     test_detail = "Verify service provided by workload is accessiable via LBIP {} in cluster {}.".format(lbsvcip, usercluster.clustername)
     test_name = "test_workload_accessiable_via_lbsvcip"
 
-    if check_service_availbility(lbsvcip, http_http_target_string, testreportlog):
+    if check_service_availbility(lbsvcip, testreportlog):
         test_result="PASS"
     else:
         test_result="FAIL"
@@ -841,7 +911,7 @@ def admin_cluster_test(admincluster, testreportlog, abortonfailure):
     test_cluster_sanity(admincluster, testreportlog, abortonfailure)
  
 
-def test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type, lbsvcip, http_http_target_string, abortonfailure):
+def test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type, lbsvcip, abortonfailure):
     concurrent_session = 100
     total_request = 5000
     expected_duration = 5
@@ -852,13 +922,13 @@ def test_workflow_state(usercluster, testreportlog, workloadns, expected_state, 
         test_workload_pod_state(usercluster, workloadns, expected_state, testreportlog, abortonfailure)
         test_workload_number_of_pods(usercluster, workloadns, expected_number, testreportlog, abortonfailure)
         if test_workload_service_state(usercluster, workloadns, service_type, lbsvcip, testreportlog, abortonfailure):
-            if test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, http_http_target_string, testreportlog, abortonfailure):
+            if test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
                 test_service_traffic(concurrent_session, total_request, lbsvcip, expected_duration, testreportlog, abortonfailure)
         test_workload_deployment_state(usercluster, workloadns, expected_number, testreportlog, abortonfailure)
         test_workload_replica_state(usercluster,  workloadns, expected_number, testreportlog, abortonfailure)
 
 
-def user_cluster_test(usercluster, lbsvcip, http_http_target_string, testreportlog, abortonfailure):    
+def user_cluster_test(usercluster, lbsvcip, testreportlog, abortonfailure):    
     
     expected_state = "Running"
 
@@ -872,16 +942,16 @@ def user_cluster_test(usercluster, lbsvcip, http_http_target_string, testreportl
     test_cluster_sanity(usercluster, testreportlog, abortonfailure)
     test_machinedeployment_update(usercluster, testreportlog, abortonfailure) 
 
-    workloadns, expected_number, deployment_name, service_type = get_info_from_workload_yaml_file()
     
     test_workload_deployment(usercluster, lbsvcip, testreportlog, abortonfailure)
+    workloadns, expected_number, deployment_name, service_type = get_info_from_workload_yaml_file()
     time.sleep(30)
-    test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type, lbsvcip, http_http_target_string, abortonfailure)
+    test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type, lbsvcip, abortonfailure)
 
     new_replica = expected_number*2
     usercluster.workload_replica_modify(deployment_name, workloadns, new_replica)
     time.sleep(30)
-    test_workflow_state(usercluster, testreportlog, workloadns, expected_state, new_replica, service_type, lbsvcip, http_http_target_string, abortonfailure)
+    test_workflow_state(usercluster, testreportlog, workloadns, expected_state, new_replica, service_type, lbsvcip, abortonfailure)
 
     test_workload_withdraw(usercluster, testreportlog, abortonfailure)
     time.sleep(10)
@@ -912,12 +982,12 @@ def generate_test_summary(testreportlog):
         testreportlog.info2file("      {}".format(':'.join(eachcase)))
     testreportlog.info2file("======================================================================================================================================")
 
+env_prepare()
 
 # pre-check
 if not env_check():
     print "WARNING: Please check your env. gkectl and kubectl are needed to run the test script."
     exit
-env_prepare()
 
 # Test 
 parser = argparse.ArgumentParser()
@@ -935,7 +1005,9 @@ parser.add_argument('-platform', '--platform', dest='platform', type=str, defaul
 parser.add_argument('-version', '--version', dest='version', type=str, default='1.1')
 parser.add_argument('-upgrade', '--upgrade', dest='upgrade', type=bool, default=False)
 
+
 args = parser.parse_args()
+
 currentDT = datetime.datetime.now()
 timestamp = '{}-{}-{}-{}-{}'.format(currentDT.month, currentDT.day, currentDT.year, currentDT.hour, currentDT.minute)
 anthosreportlog = '{}.report.{}.{}.{}.log'.format(args.anthostestlog, args.partner, args.version, timestamp)
@@ -959,7 +1031,7 @@ for userclustercfg in userclustercfgs:
     userclustercfgfile = '{}/{}'.format(args.clustercfgpath, userclustercfg)
     usercluster = gkeonpremcluster(userclustercfgfile, False, testreportlog, args.partner)
     while loop < args.testloop: 
-        user_cluster_test(usercluster, lbsvcip, http_http_target_string, testreportlog, args.abortonfailure)
+        user_cluster_test(usercluster, lbsvcip, testreportlog, args.abortonfailure)
         loop += 1
         time.sleep(60)
 
@@ -972,5 +1044,6 @@ generate_test_summary(testreportlog)
 
 if args.gcsbucket:
     if args.serviceacct:
-        gcp_auth(args.serviceacct)
+        if gcp_auth(args.serviceacct) == 1:
+            exit()
     upload_testlog(anthosreportlog, args.gcsbucket)
