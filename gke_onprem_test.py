@@ -71,11 +71,20 @@ http_target_string = 'Welcome to nginx!'
 
 def create_yaml_file_from_string(yaml_string, yaml_file):
     try:
-         with open(yaml_file, 'w') as writer:
-             writer.write(yaml_string)
+        with open(yaml_file, 'w') as writer:
+            writer.write(yaml_string)
     except EnvironmentError: 
         print 'Oops: open file {} for write fails.'.format(yaml_file)
         exit()
+
+def delete_yaml_files():
+    exists = os.path.isfile(workloadyaml)
+    if exists:
+        os.remove(workloadyaml)
+    exists = os.path.isfile(patchnodeyaml)
+    if exists:
+        os.remove(patchnodeyaml)
+    
 
 def send_log_to_stdout():
     root = logging.getLogger()
@@ -839,9 +848,9 @@ def test_workload_replica_state(usercluster, workloadns, expected_number, testre
     return  test_result == "PASS"
 
 
-def test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
-    test_detail = "Verify service provided by workload is accessiable via LBIP {} in cluster {}.".format(lbsvcip, usercluster.clustername)
-    test_name = "test_workload_accessiable_via_lbsvcip"
+def test_workload_accessible_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
+    test_detail = "Verify service provided by workload is accessible via LBIP {} in cluster {}.".format(lbsvcip, usercluster.clustername)
+    test_name = "test_workload_accessible_via_lbsvcip"
 
     if check_service_availbility(lbsvcip, testreportlog):
         test_result="PASS"
@@ -876,7 +885,7 @@ def test_service_traffic(concurrent_session, total_request, lbsvcip, expected_du
                 actual_time_used = float(timepattern.search(retOutput).group(1))
                 print "actual_time_used:{}".format(actual_time_used)
                 testreportlog.info2file("Actual time used: {} for {} request with {} concurrent sessions".format(actual_time_used, total_request, concurrent_session))
-                testreportlog.info2file("Ideal time used should be less than 0.5s for {} request with {} concurrent sessions.".format(total_request, concurrent_session))
+                testreportlog.info2file("Ideal time used should be less than 0.2s for {} request with {} concurrent sessions.".format(total_request, concurrent_session))
                 if actual_time_used < expected_duration:
                     test_result = "PASS"
                 else:
@@ -891,7 +900,7 @@ def test_service_traffic(concurrent_session, total_request, lbsvcip, expected_du
     test_results.append([test_name, test_result, test_detail])
     if test_result == "FAIL" and abortonfailure:
         test_abort(testreportlog)
-    return  test_result == "PASS"
+    return test_result == "PASS"
 
 
 def cluster_cleanup(usercluster):
@@ -913,16 +922,16 @@ def admin_cluster_test(admincluster, testreportlog, abortonfailure):
 
 def test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type, lbsvcip, abortonfailure):
     concurrent_session = 100
-    total_request = 5000
+    total_request = 10000
     expected_duration = 5
 
-    test_cluster_sanity(usercluster, testreportlog, abortonfailure)
+    #test_cluster_sanity(usercluster, testreportlog, abortonfailure)
     usercluster.get_all_for_namespace(workloadns)
     if test_workload_deployed(usercluster, workloadns, testreportlog, abortonfailure):
         test_workload_pod_state(usercluster, workloadns, expected_state, testreportlog, abortonfailure)
         test_workload_number_of_pods(usercluster, workloadns, expected_number, testreportlog, abortonfailure)
         if test_workload_service_state(usercluster, workloadns, service_type, lbsvcip, testreportlog, abortonfailure):
-            if test_workload_accessiable_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
+            if test_workload_accessible_via_lbsvcip(usercluster, workloadns, lbsvcip, testreportlog, abortonfailure):
                 test_service_traffic(concurrent_session, total_request, lbsvcip, expected_duration, testreportlog, abortonfailure)
         test_workload_deployment_state(usercluster, workloadns, expected_number, testreportlog, abortonfailure)
         test_workload_replica_state(usercluster,  workloadns, expected_number, testreportlog, abortonfailure)
@@ -960,7 +969,7 @@ def user_cluster_test(usercluster, lbsvcip, testreportlog, abortonfailure):
     test_workload_deleted(usercluster, workloadns, abortonfailure)
     time.sleep(10)
  
-    test_cluster_sanity(usercluster,  testreportlog, abortonfailure)
+    #test_cluster_sanity(usercluster,  testreportlog, abortonfailure)
 
 
 def generate_test_summary(testreportlog):
@@ -995,22 +1004,22 @@ parser.add_argument('-clustercfgpath', '--clustercfgpath', dest='clustercfgpath'
 parser.add_argument('-adminclustercfg', '--adminclustercfg', dest='admcfg', type=str, default=None, required=True)
 parser.add_argument('-userclustercfg', '--userclustercfg', dest='usercfg', type=str, default=None, required=True)
 parser.add_argument('-lbsvcip', '--lbsvcip', dest='lbsvcip', type=str, default=None, required=True)
-parser.add_argument('-anthostestlog', '--anthostestlog', dest='anthostestlog', type=str, default='anthos.test')
+parser.add_argument('-anthostestlog', '--anthostestlog', dest='anthostestlog', type=str, default='gkeonprem.test')
 parser.add_argument('-gcsbucket', '--gcsbucket', dest='gcsbucket', type=str, default=None)
 parser.add_argument('-serviceacct', '--serviceacct', dest='serviceacct', type=str, default=None)
 parser.add_argument('-testloop', '--testloop', dest='testloop', type=int, default=1)
 parser.add_argument('-abortonfailure', '--abortonfailure', dest='abortonfailure', type=bool, default=False)
-parser.add_argument('-partner', '--partner', dest='partner', type=str, default='Dell')
-parser.add_argument('-platform', '--platform', dest='platform', type=str, default='Flex')
-parser.add_argument('-version', '--version', dest='version', type=str, default='1.1')
+parser.add_argument('-partner', '--partner', dest='partner', type=str, default='gcp')
+parser.add_argument('-platform', '--platform', dest='platform', type=str, default='unknown')
+parser.add_argument('-version', '--version', dest='version', type=str, default='unknown')
 parser.add_argument('-upgrade', '--upgrade', dest='upgrade', type=bool, default=False)
 
 
 args = parser.parse_args()
 
 currentDT = datetime.datetime.now()
-timestamp = '{}-{}-{}-{}-{}'.format(currentDT.month, currentDT.day, currentDT.year, currentDT.hour, currentDT.minute)
-anthosreportlog = '{}.report.{}.{}.{}.log'.format(args.anthostestlog, args.partner, args.version, timestamp)
+timestamp = time.strftime("%Y-%m-%d-%H-%M")
+anthosreportlog = '{}.{}.{}.{}.T{}.log'.format(args.anthostestlog, args.partner, args.platform, args.version, timestamp)
 testreportlog = testlog(anthosreportlog, 7)
 testreportlog.info2file("Anthos-Ready Platform Test for platform {}, Partner {} starting at {}.\n\n".format(args.platform, args.partner, timestamp))
 # Set log to stdout 
@@ -1034,11 +1043,16 @@ for userclustercfg in userclustercfgs:
         user_cluster_test(usercluster, lbsvcip, testreportlog, args.abortonfailure)
         loop += 1
         time.sleep(60)
+    cluster_cleanup(usercluster)
+    delete_yaml_files()
+    time.sleep(60)
 
-cluster_cleanup(usercluster)
 
+print "Before script ends run sanity check on both admin and user cluster"
 #Final check for admin Cluster
-admin_cluster_test(admincluster,  testreportlog, args.abortonfailure)
+test_cluster_sanity(admincluster, testreportlog, args.abortonfailure)
+#Final check for user Cluster
+test_cluster_sanity(usercluster, testreportlog, args.abortonfailure)
 
 generate_test_summary(testreportlog)
 
