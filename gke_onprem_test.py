@@ -885,7 +885,7 @@ def test_service_traffic(concurrent_session, total_request, lbsvcip, expected_du
                 actual_time_used = float(timepattern.search(retOutput).group(1))
                 print "actual_time_used:{}".format(actual_time_used)
                 testreportlog.info2file("Actual time used: {} for {} request with {} concurrent sessions".format(actual_time_used, total_request, concurrent_session))
-                testreportlog.info2file("Ideal time used should be less than 0.2s for {} request with {} concurrent sessions.".format(total_request, concurrent_session))
+                testreportlog.info2file("Ideal time used should be less than 0.5s for {} request with {} concurrent sessions.".format(total_request, concurrent_session))
                 if actual_time_used < expected_duration:
                     test_result = "PASS"
                 else:
