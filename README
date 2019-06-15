@@ -108,15 +108,23 @@ Sample test output:
 --------------------
  Summary:
      gkectl version: 1.0.6, gke_onprem_test version: 1.0.1
-     partner: unknown, platform detail: myplatform.cfg.t0t
+     partner: unknown, platform detail: myplatform.cfg.txt
+       Vendor: MyExampe
+       ESXi Version: ESXi 6.5 EP 14
+       vCenter Version: vCenter Server 6.5 U2h
+       Load Balancer: F5 VE BIGIP-13.1.1-0.0.4.ALL-scsi
+       Server Model: SYS-6018R-TDW
+       CPU Model: Intel Xeon Gold 6154
+       CPU Number: 2
+       Total pCore count: 36
+       RAM: 384GB
+       Disk Drives: 2x 480GB SSD SATA; 4x 3.84TB SSD SAS
+       NIC model: Intel X520-DA2
+       Shared Storage Solution: VMware VSAN
+
      admin cluster version: 1.11.2-gke.31, user cluster version: 1.11.2-gke.31
-     Total Tests: 48, Passed Tests: 41, Failed Tests: 7
+     Total Tests: 38, Passed Tests: 38, Failed Tests: 0
  ===============================================================================================================================================================================
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/kubeconfig.cpe.1.
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/userclustercfg.
-       test_machinedeployment_update:PASS:Modify number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig to 4.
-       test_machinedeployment_update:PASS:Modify number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig to 3.
        test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-1-1.
        test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
        test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
@@ -136,8 +144,6 @@ Sample test output:
        test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
        test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-1-1.
        test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig in namespace nginx-sanity-ns.
-       test_machinedeployment_update:FAIL:Modify number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/userclustercfg to 4.
-       test_machinedeployment_update:PASS:Modify number of machine deployment for cluster defined by /home/ubuntu/anthos_ready/kubecfg/userclustercfg to 3.
        test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-1-1.
        test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
        test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
@@ -157,9 +163,6 @@ Sample test output:
        test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
        test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-1-1.
        test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/userclustercfg in namespace nginx-sanity-ns.
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/kubeconfig.cpe.1.
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig.
-       test_cluster_sanity:FAIL:Cluster Sanity Check for cluster defined by /home/ubuntu/anthos_ready/kubecfg/userclustercfg.
  ===============================================================================================================================================================================
 
 Version History
