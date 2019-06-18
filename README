@@ -1,7 +1,7 @@
 Summary
 -------
 The script gke_onprem_test is a sanity verification tool for GKE On-Prem
-deployment.
+deployment for Google Cloud Platform Partner.
 
 Prerequisite
 ------------
@@ -31,7 +31,16 @@ Script can be downloaded from:
 1. Github: https://github.com/minzhuogoogle/gke-on-prem
 2. GCS Bucket gs://anthos_ready_test_script/
    Google Cloud SDK is required to be installed to access GCS bucket.
-3. Executable python binary ( TBD)
+3. Executable python binary: gke_onprem_test
+   Note: this script can be run on admin workstation installed using OVA for
+   Anthos Release 1.0.10.
+4. All can be downloaded from gcs bucket:
+gsutil ls gs://anthos_ready_test_script
+gs://anthos_ready_test_script/README
+gs://anthos_ready_test_script/gke_onprem_test
+gs://anthos_ready_test_script/gke_onprem_test.py
+gs://anthos_ready_test_script/myplatform.cfg.txt
+gs://anthos_ready_test_script/sample.test.log
 
 
 How to run it
