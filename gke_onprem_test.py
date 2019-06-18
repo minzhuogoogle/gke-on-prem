@@ -477,30 +477,34 @@ def send_log_to_stdout():
 def env_prepare():
     retcode = 1
     cmdline = "pip list"
+    retOutput = ""
     try:
         retOutput = subprocess.check_output(cmdline.split())
     except:
-        retOutput = None
+        retOutput = ""
     if not "six" in retOutput:
         try:
-            package_install_cli = 'sudo apt-get install python-pip -y'
+            cmdline = 'sudo apt-get update'
+            retOutput = subprocess.check_output(cmdline.split())
+            #print "Output for cmdline {}: {}".format(cmdline, retOutput)
+        except:
+            print "Fail to update package."
+            countdown(2) 
+        try:
+            package_install_cli = 'sudo apt-get install python-six -y'
             retOutput = subprocess.check_output(package_install_cli.split())
-            package_install_cli = 'pip install six'
-            retOutput = subprocess.check_output(package_install_cli.split())
-            print retOutput
+            print "Output for cmdline {}: {}".format(package_install_cli, retOutput)
         except:
             print "Fail to install python package. Please check python package six is installed."
             retcode = 1
-            exit() 
-
+            countdown(2)
     lib = 'six'
     globals()[lib] = importlib.import_module(lib)
     cmdline =  "sudo apt list --installed"
     try:
         (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
     except:
-        retOutput = None
-    return retcode    
+        retOutput = ""
     if not "apache2-utils" in retOutput:
         package_install_cli = 'sudo apt-get install apache2-utils -y'
         try:
@@ -508,12 +512,13 @@ def env_prepare():
         except:
             print "Fail to install package. Please check package apache2-utils is installed."
             print "Use {} to install package".format(package_install_cli)
-            exit()
+            print "Output for cmdline {}: {}".format(package_install_cli, retOutput)
+            countdown(2)
         if retcode == 1:
             print "Fail to install package. Please check package apache2-utils is installed."
             print "Use {} to install package".format(package_install_cli)
-            exit()
-
+            print "Output for cmdline {}: {}".format(package_install_cli, retOutput)
+            countdown(2) 
 
 def env_check():
     cmdline = "kubectl --help"
@@ -1622,14 +1627,15 @@ def testargparser():
     
 
 ####### Starts
+# Test Arg Parser
+testargparser()
+
 # install package if needed
 env_prepare()
 
 # pre-check
 env_check()
 
-# Test Arg Parser
-testargparser()
 
 # set output to stdout
 send_log_to_stdout()
