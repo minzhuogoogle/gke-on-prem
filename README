@@ -24,23 +24,28 @@ for wrokstation where script is going to run.
 
 Where to get test script
 ------------------------
-The scripts include:
-    * test script gke_onprem_test.py
+test script: gke_onprem_test
 
 Script can be downloaded from:
-1. Github: https://github.com/minzhuogoogle/gke-on-prem
-2. GCS Bucket gs://anthos_ready_test_script/
+1. GCS Bucket gs://anthos_ready_test_script/
    Google Cloud SDK is required to be installed to access GCS bucket.
 3. Executable python binary: gke_onprem_test
    Note: this script can be run on admin workstation installed using OVA for
    Anthos Release 1.0.10.
 4. All can be downloaded from gcs bucket:
-gsutil ls gs://anthos_ready_test_script
-gs://anthos_ready_test_script/README
-gs://anthos_ready_test_script/gke_onprem_test
-gs://anthos_ready_test_script/gke_onprem_test.py
-gs://anthos_ready_test_script/myplatform.cfg.txt
-gs://anthos_ready_test_script/sample.test.log
+   gsutil ls gs://anthos_ready_test_script
+   gs://anthos_ready_test_script/README
+   gs://anthos_ready_test_script/admin.ip.yaml
+   gs://anthos_ready_test_script/cpe-user-3.yaml
+   gs://anthos_ready_test_script/gke_onprem_test.v1.0.1
+   gs://anthos_ready_test_script/gke_onprem_test.v1.0.2
+   gs://anthos_ready_test_script/gke_onprem_test_lowbw.py
+   gs://anthos_ready_test_script/myplatform.cfg.txt
+   gs://anthos_ready_test_script/sample.test.log
+   gs://anthos_ready_test_script/user1.ip.yaml
+   gs://anthos_ready_test_script/user2.ip.yaml
+   gs://anthos_ready_test_script/user3.ip.yaml
+   gs://anthos_ready_test_script/user4.ip.yaml
 
 
 How to run it
@@ -52,16 +57,26 @@ When running script provide path to admin and user cluster config files, admin
 cluster config file name, user cluster config file name and VIP for workload
 load-balancer.
 
-usage: gke_onprem_test.py [-h] -cfgpath CLUSTERCFGPATH -admin ADMCFG -user
-                          USERCFG -lbip LBSVCIP [-testlog ANTHOSTESTLOG]
-                          [-gcs GCSBUCKET] [-serviceacct SERVICEACCT]
-                          [-loop TESTLOOP] [-abort] [-partner PARTNER]
-                          [-platformcfg PLATFORMCFGFILE]
+usage:
+./gke_onprem_test --help
+usage: gke_onprem_test [-h] [-cfgpath CLUSTERCFGPATH] [-admin ADMCFG]
+                       [-user USERCFG] [-lbip LBSVCIP]
+                       [-testlog ANTHOSTESTLOG] [-gcs GCSBUCKET]
+                       [-serviceacct SERVICEACCT] [-loop TESTLOOP] [-abort]
+                       [-partner PARTNER] [-platformcfg PLATFORMCFGFILE]
+                       [-request TOTALREQ] [-concurrent CONCURRENT]
+                       [-maxtime MAXTIME] [-createcluster]
+                       [-createyamlfile CREATEYAMLFILE] [-newusercluster]
+                       [-clusteryaml CLUSTERYAML]
+                       [-userclustername USERCLUSTERNAME]
+                       [-userpartition USERPARTITION]
+                       [-controlplanevip CONTROLPLANEVIP]
+                       [-staticipblock STATICIPBLOCK] [-ingressvip INGRESSVIP]
 
 optional arguments:
   -h, --help            show this help message and exit
   -cfgpath CLUSTERCFGPATH, --clustercfgpath CLUSTERCFGPATH
-                        Path for cluster kube config files
+                        Absolute Path for cluster kubeconfig files
   -admin ADMCFG, --adminclustercfg ADMCFG
                         Admin Cluster kubeconfig file
   -user USERCFG, --userclustercfg USERCFG
@@ -69,12 +84,12 @@ optional arguments:
   -lbip LBSVCIP, --lbsvcip LBSVCIP
                         IP Address for Load-balancer for service to be
                         deployed
-  -testlog ANTHOSTESTLOG, --anthostestlog ANTHOSTESTLOG
+  -testlog ANTHOSTESTLOG, --testlog ANTHOSTESTLOG
                         Prefix for test log file
   -gcs GCSBUCKET, --gcsbucket GCSBUCKET
                         GCS bucket where file is to be uploaded to
   -serviceacct SERVICEACCT, --serviceacct SERVICEACCT
-                        service account used to authorize for GCS service
+                        Google Cloud service account
   -loop TESTLOOP, --testloop TESTLOOP
                         number of loops test cases to be run
   -abort, --abortonfailure
@@ -83,41 +98,77 @@ optional arguments:
                         Anthos Partner
   -platformcfg PLATFORMCFGFILE, --platformcfgfile PLATFORMCFGFILE
                         Partner provided file for platform detail information
+  -request TOTALREQ, --totalrequest TOTALREQ
+                        Total Requests sent to the deployed service
+  -concurrent CONCURRENT, --concurrent CONCURRENT
+                        Number of concurrent sessions initialized with the
+                        deployed service
+  -maxtime MAXTIME, --maxtime MAXTIME
+                        Maximum time required to finish all requests in second
+  -createcluster, --createcluster
+                        Flag whether to create a new GKE On-Prem cluster or
+                        not, by default flag is set as False
+  -createyamlfile CREATEYAMLFILE, --createyamlfile CREATEYAMLFILE
+                        yaml file to create a new gke on-prem cluster
+                        including admin and user cluster
+  -newusercluster, --newusercluster
+                        flag whether to create a new user cluster or not, by
+                        default, flag is set to False
+  -clusteryaml CLUSTERYAML, --clusteryaml CLUSTERYAML
+                        Yaml file used to create the admin and the first user
+                        cluster
+  -userclustername USERCLUSTERNAME, --userclustername USERCLUSTERNAME
+                        New User Cluster name
+  -userpartition USERPARTITION, --userpartition USERPARTITION
+                        Partition on BIGIP
+  -controlplanevip CONTROLPLANEVIP, --controlplanevip CONTROLPLANEVIP
+                        Control Plan VIP for new cluster
+  -staticipblock STATICIPBLOCK, --staticipblock STATICIPBLOCK
+                        Yaml file for static ip block
+  -ingressvip INGRESSVIP, --ingressvip INGRESSVIP
 
 
 Sample script run command:
 -----------------------------
 1. Run Test and abort test if test fails in the user cluster
-./gke_onprem_test.py  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
+./gke_onprem_test  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
 -user cpe-user-1-1-kubeconfig -lbip 100.115.253.112   --gcs gs://anthos_ready_test_log
 -serviceacct /home/ubuntu/vsphere/release-reader-key.json
 -platformcfg myplatform.cfg.txt -abort
 
 2. Run Test and continue regardless whether test fails or not
-./gke_onprem_test.py  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
+./gke_onprem_test  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
 -user cpe-user-1-1-kubeconfig -lbip 100.115.253.112   --gcs gs://anthos_ready_test_log
 -serviceacct /home/ubuntu/vsphere/release-reader-key.json
 -platformcfg myplatform.cfg.txt
 
 3. Run Test on multiple user clusters. User kube config files are divided by
 comma
-./gke_onprem_test.py  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
+./gke_onprem_test  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
 -user cpe-user-1,cpe-user-2 -lbip 100.115.253.112   --gcs gs://anthos_ready_test_log
 -serviceacct /home/ubuntu/vsphere/release-reader-key.json
 -platformcfg myplatform.cfg.txt
 
 4. Run test for loop 100
-./gke_onprem_test.py  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
+./gke_onprem_test  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
 -user cpe-user-1-1-kubeconfig -lbip 100.115.253.112   --gcs gs://anthos_ready_test_log
 -serviceacct /home/ubuntu/vsphere/release-reader-key.json
 -platformcfg myplatform.cfg.txt  -loop 100
 
+5. Create a new admin/user cluster and continue all tests.
+./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -createcluster -createyamlfile cpe-user-3.yaml -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -controlplanevip 100.115.253.143 -ingressvip 100.115.253.144 -staticipblock user2.ip.yaml 
+
+6. Create a new admin/user cluster and the 2nd user cluster, and continue all tests for all users clusters.
+./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -createcluster -createyamlfile cpe-user-3.yaml -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -controlplanevip 100.115.253.143 -ingressvip 100.115.253.144 -staticipblock user2.ip.yaml 
+
+7. Create a new user cluster and continue all tests for all users clusters.
+./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -admin kubeconfig -user cpe-user-3-1-kubeconfig -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-3 -userpartition cpe-user-3-3 -controlplanevip 100.115.253.145 -ingressvip 100.115.253.146 -staticipblock user3.ip.yaml 
 
 Sample test output:
 --------------------
  Summary:
-     gkectl version: 1.0.6, gke_onprem_test version: 1.0.1
-     partner: unknown, platform detail: myplatform.cfg.txt
+     gkectl version: 1.0.10, gke_onprem_test version: 1.0.2
+     partner: google, platform detail: myplatform.cfg.txt
        Vendor: MyExampe
        ESXi Version: ESXi 6.5 EP 14
        vCenter Version: vCenter Server 6.5 U2h
@@ -126,57 +177,93 @@ Sample test output:
        CPU Model: Intel Xeon Gold 6154
        CPU Number: 2
        Total pCore count: 36
-       RAM: 384GB
-       Disk Drives: 2x 480GB SSD SATA; 4x 3.84TB SSD SAS
-       NIC model: Intel X520-DA2
-       Shared Storage Solution: VMware VSAN
-
-     admin cluster version: 1.11.2-gke.31, user cluster version: 1.11.2-gke.31
-     Total Tests: 38, Passed Tests: 38, Failed Tests: 0
+     Traffic Test Profile: Total Requests: 10000
+                           Concurrent Sessions: 100
+                           Expect to finish all requests in 5 seconds
+     admin cluster version: 1.12.7-gke.19, user cluster version: 1.12.7-gke.19
+     Total Tests: 40, Passed Tests: 40, Failed Tests: 0
  ===============================================================================================================================================================================
-       test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-1-1.
-       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
-       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
-       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 3.
-       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
-       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.112 in cluster cpe-user-1-1.
-       test_service_traffic:PASS:Verify service traffic at 100.115.253.112 in user cluster cpe-user-1-1.
-       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
-       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
-       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
-       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
-       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 6.
-       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
-       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.112 in cluster cpe-user-1-1.
-       test_service_traffic:PASS:Verify service traffic at 100.115.253.112 in user cluster cpe-user-1-1.
-       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
-       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
-       test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-1-1.
-       test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/cpe-user-1-1-kubeconfig in namespace nginx-sanity-ns.
-       test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-1-1.
-       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
-       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
-       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 3.
-       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
-       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.112 in cluster cpe-user-1-1.
-       test_service_traffic:PASS:Verify service traffic at 100.115.253.112 in user cluster cpe-user-1-1.
-       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
-       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 3.
-       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-1-1.
-       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 are Running.
-       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to the expected number 6.
-       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 has LoadBalancer at 100.115.253.112.
-       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.112 in cluster cpe-user-1-1.
-       test_service_traffic:PASS:Verify service traffic at 100.115.253.112 in user cluster cpe-user-1-1.
-       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
-       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-1-1 equals to 6.
-       test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-1-1.
-       test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/userclustercfg in namespace nginx-sanity-ns.
+       test_gke_onprem_cluster_creation:PASS:Verify gkectl can create a new GKE OnPrem Cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml.
+       test_new_user_cluster_creation:PASS:Verify a new user cluster cpe-user-3-2 can be created in admin cluster defined by /home/ubuntu/anthos_ready/kubecfg/kubeconfig.
+       test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-3-1.
+       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-3-1.
+       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 are Running.
+       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to the expected number 3.
+       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 has LoadBalancer at 100.115.253.154.
+       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.154 in cluster cpe-user-3-1.
+       test_service_traffic:PASS:Verify service traffic at 100.115.253.154 in user cluster cpe-user-3-1.
+       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to 3.
+       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to 3.
+       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-3-1.
+       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 are Running.
+       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to the expected number 6.
+       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 has LoadBalancer at 100.115.253.154.
+       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.154 in cluster cpe-user-3-1.
+       test_service_traffic:PASS:Verify service traffic at 100.115.253.154 in user cluster cpe-user-3-1.
+       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to 6.
+       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-1 equals to 6.
+       test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-3-1.
+       test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/cpe-user-3-1-kubeconfig in namespace nginx-sanity-ns.
+       test_workload_deployment:PASS:Apply yaml file nginx.yaml in cluster cpe-user-3-2.
+       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-3-2.
+       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 are Running.
+       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to the expected number 3.
+       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 has LoadBalancer at 100.115.253.154.
+       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.154 in cluster cpe-user-3-2.
+       test_service_traffic:PASS:Verify service traffic at 100.115.253.154 in user cluster cpe-user-3-2.
+       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to 3.
+       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to 3.
+       test_workload_deployed:PASS:Verify workflow specified by nginx-sanity-ns is deployed in cluster cpe-user-3-2.
+       test_workload_pod_state:PASS:Verify all pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 are Running.
+       test_workload_number_of_pods:PASS:Verify number of pods for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to the expected number 6.
+       test_workload_service_state:PASS:Verify service for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 has LoadBalancer at 100.115.253.154.
+       test_workload_accessible_via_lbsvcip:PASS:Verify service provided by workload is accessible via LBIP 100.115.253.154 in cluster cpe-user-3-2.
+       test_service_traffic:PASS:Verify service traffic at 100.115.253.154 in user cluster cpe-user-3-2.
+       test_workload_service_state:PASS:Verify deployment for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to 6.
+       test_workload_replica_state:PASS:Verify replicas for workload specified by nginx-sanity-ns deployed in cluster cpe-user-3-2 equals to 6.
+       test_workload_withdraw:PASS:Delete workflow defined by yaml file nginx.yaml in cluster cpe-user-3-2.
+       test_workload_deleted:PASS:Workload defined by nginx.yaml is deleted for cluster /home/ubuntu/anthos_ready/kubecfg/cpe-user-3-2-kubeconfig in namespace nginx-sanity-ns.
  ===============================================================================================================================================================================
 
 Version History
 -----------------
 V1.0.1  June 2019
+        1. script can run gkectl diag check.
+        2. script can resize user cluster
+        3. script can apply workload and run sanity check for workload.
+        4. script can modify replica for workload.
+        5. script can run sanity traffic test for workload.
+        6. script can cleanup worrload.
+        7. script can run all tests N times in the loop per user's request.
+        8. script can contiune or abort test upon test failure per user's request.
+
+V1.0.2  July 2019
+	1. script can create a new GKE OnPrem Admin/User Cluster if yaml creation file is provided.
+           Log:
+               2019-07-03 18:44:16,390 - INFO - Script is going to create a new GKE OnPrem Cluster defined by yaml file cpe-user-3.yaml specified by argument "-createyamlfile"
+               2019-07-03 18:44:16,390 - INFO - Please make sure vcenter and F5 are ready for gke onprem cluster creation, If not you can press Ctl+C to abort.
+               2019-07-03 18:44:16,391 - INFO - The script is going to create a brand new GKE On-Prem Cluster defined by creation yaml file /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml.
+               2019-07-03 18:44:16,391 - INFO - gkectl check-config --config /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml
+               2019-07-03 18:44:32,651 - INFO - gkectl prepare --config /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml --validate-attestations
+               2019-07-03 18:45:59,474 - INFO - gkectl create cluster --config /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml --kubeconfig-out /home/ubuntu/anthos_ready/kubecfg/kubeconfig
+               2019-07-03 19:00:42,440 - INFO - Test_Case: test_gke_onprem_cluster_creation: PASS: Verify gkectl can create a new GKE OnPrem Cluster defined by /home/ubuntu/anthos_ready/kubecfg/cpe-user-3.yaml.
+ 
+        2. script can create addition GKE OnPrem User Cluster. 
+           Log:
+               2019-07-03 19:00:44,346 - INFO - Script is going to create a new user cluster.
+               2019-07-03 19:00:44,346 - INFO - Please make sure vcenter and F5 are ready for new user cluster creation, If not you can press Ctl+C to abort.
+               2019-07-03 19:00:44,346 - INFO - Start creating a new user cluster:
+               2019-07-03 19:00:44,346 - INFO -       cluster create yaml file: cpe-user-3.yaml
+               2019-07-03 19:00:44,346 - INFO -       cluster name: cpe-user-3-2
+               2019-07-03 19:00:44,346 - INFO -       partition for user cluster: cpe-user-3-2
+               2019-07-03 19:00:44,346 - INFO -       controlplanevip: 100.115.253.143
+               2019-07-03 19:00:44,346 - INFO -       ingressvip: 100.115.253.144
+               2019-07-03 19:12:40,918 - INFO - Test_Case: test_new_user_cluster_creation: PASS: Verify a new user cluster cpe-user-3-2 can be created in admin cluster defined by /home/ubuntu/anthos_ready/kubecfg/kubeconfig.
+
+
+        3. script supports static ip in addition to DHCP which is by default in V1.0.1.
+               If static ip is used, for initial admin/user cluster and each additional user cluster a yaml file which contains ip block should be supplied. 
+               Refer to user1.ip.yaml in gs://anthos_ready_test_script for detail.
 
 FAQ
 -----
