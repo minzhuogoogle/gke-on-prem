@@ -756,7 +756,6 @@ class gkeonpremcluster:
         #  Unavailable Replicas:  7
         #  Updated Replicas:      10
         self.readyreplicas = 1
-        return
         availablereplicas = -1
         unavailablereplicas = -1
         readyreplicas = 0
