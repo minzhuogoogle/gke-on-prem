@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import with_statement
 import argparse
 import datetime
 import errno
@@ -10,6 +9,7 @@ import pty
 import re
 import select
 import signal
+import six
 import subprocess
 import sys
 import threading
@@ -17,7 +17,8 @@ import time
 import tty
 
 
-VERSION = "1.0.1"
+
+VERSION = "1.0.2"
 
 test_results = []
 test_cfg = {}
@@ -78,7 +79,6 @@ patchnodeyaml = "patch.node.yaml"
 http_target_string = 'Welcome to nginx!'
 
 
-            
 
 # define convenient aliases for subprocess constants
 # Note subprocess.PIPE == -1, subprocess.STDOUT = -2
@@ -132,7 +132,7 @@ def setraw(*args, **kwargs):
         raise
 
 
-def call(*args, **kwargs):  
+def call(*args, **kwargs):
   """Run a command, wait for it to complete, and return the returncode.
 
   Example:
@@ -428,7 +428,7 @@ class Popen(subprocess.Popen):
       os.kill(self.pid, signal.SIGTERM)
 
 
-def countdown(t, step=1, msg='sleeping'): 
+def countdown(t, step=1, msg='sleeping'):
     for i in range(t, 0, -step):
         pad_str = '.' * len('%d' % i)
         print '%s for the next %d seconds %s.\r' % (msg, i, pad_str),
@@ -441,9 +441,9 @@ def create_yaml_file_from_string(yaml_string, yaml_file):
     try:
         with open(yaml_file, 'w') as writer:
             writer.write(yaml_string)
-    except EnvironmentError: 
+    except EnvironmentError:
         print 'Oops: open file {} for write fails.'.format(yaml_file)
-        exit()
+        sys.exit()
 
 
 def delete_yaml_files():
@@ -453,15 +453,14 @@ def delete_yaml_files():
             os.remove(workloadyaml)
         except EnvironmentError:
             print 'Oops: delete yaml file fails.'
-            exit()
-    
+            sys.exit()
     exists = os.path.isfile(patchnodeyaml)
     if exists:
         try:
             os.remove(patchnodeyaml)
         except EnvironmentError:
             print 'Oops: delete yaml file fails.'
-            exit()
+            sys.exit()
 
 
 def send_log_to_stdout():
@@ -476,30 +475,7 @@ def send_log_to_stdout():
 
 def env_prepare():
     retcode = 1
-    cmdline = "pip list"
     retOutput = ""
-    try:
-        retOutput = subprocess.check_output(cmdline.split())
-    except:
-        retOutput = ""
-    if not "six" in retOutput:
-        try:
-            cmdline = 'sudo apt-get update'
-            retOutput = subprocess.check_output(cmdline.split())
-            #print "Output for cmdline {}: {}".format(cmdline, retOutput)
-        except:
-            print "Fail to update package."
-            countdown(2) 
-        try:
-            package_install_cli = 'sudo apt-get install python-six -y'
-            retOutput = subprocess.check_output(package_install_cli.split())
-            print "Output for cmdline {}: {}".format(package_install_cli, retOutput)
-        except:
-            print "Fail to install python package. Please check python package six is installed."
-            retcode = 1
-            countdown(2)
-    lib = 'six'
-    globals()[lib] = importlib.import_module(lib)
     cmdline =  "sudo apt list --installed"
     try:
         (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
@@ -518,7 +494,7 @@ def env_prepare():
             print "Fail to install package. Please check package apache2-utils is installed."
             print "Use {} to install package".format(package_install_cli)
             print "Output for cmdline {}: {}".format(package_install_cli, retOutput)
-            countdown(2) 
+            countdown(2)
 
 def env_check():
     cmdline = "kubectl --help"
@@ -526,13 +502,13 @@ def env_check():
     if retcode == 1:
         print "Fail to run kubectl. Kubectl is required to run the test script."
         print "Please refer to https://kubernetes.io/docs/tasks/tools/install-kubectl/ to install kubectl"
-        exit()
+        sys.exit()
     cmdline = "gkectl --help"
     (retcode, retOuput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
     if retcode == 1:
         print "Fail to run gkectl. gkectl is required to run the test script."
-        exit()
-  
+        sys.exit()
+
 
 class CommandFailError(Exception):
      pass
@@ -580,7 +556,7 @@ def gcp_auth(serviceacct):
     print retOuput
     if retcode == 1:
         print "Failure to run cmd {}".format(cmdline)
-    return retcode    
+    return retcode
 
 
 def upload_testlog(testlog, gcs_bucket):
@@ -588,8 +564,7 @@ def upload_testlog(testlog, gcs_bucket):
     Args:
       testlog: the full path of testlog file
       gcs_bucket: the gcs bucket identifier
-    
-     Returns:
+    Returns:
     tuple: return code and reply message
     """
     cmdline = 'gsutil cp {} {}/{}'.format(testlog, gcs_bucket, testlog)
@@ -607,7 +582,7 @@ def check_service_availbility(svc_endpoint, testreportlog):
     retry = 5
     interval = 2
     count = 0
-    cmdOutput = "" 
+    cmdOutput = ""
     while count < retry and not http_target_string in cmdOutput:
         print "Running {} for {} time".format(cmdline, count)
         try: 
@@ -682,10 +657,9 @@ class testlog:
             sys.stdout.write(RED)
         else:
             sys.stdout.write(BLUE)
-    
         self.logger.info(logmessage)
         sys.stdout.write(RESET)
-       
+
     def detail2file(self, logmessage):
         if "PASS" in logmessage:
             sys.stdout.write(GREEN)
@@ -693,7 +667,6 @@ class testlog:
             sys.stdout.write(RED)
         else:
             sys.stdout.write(BLUE)
-        
         self.logger.debug(logmessage)
         sys.stdout.write(RESET)
 
@@ -714,29 +687,32 @@ class gkeonpremcluster:
         if not self.check_cluster_server_connectivity():
             self.reachable = False
             self.control_version = '0.0.0'
-            print "server ip for cluster defined by {} is not reachable at server ip {}.".format(self.clustercfgfile, self.serverip)
-        else:    
+            self.detaillog.detail2file("server ip for cluster defined by {} is not reachable at server ip {}.".format(self.clustercfgfile, self.serverip))
+        else:
             self.reachable  = True
             self.get_cluster_name()
             self.get_gke_version()
             if isAdminCluster:
                 self.readyreplicas = 0
-            else:    
+            else:
                 self.get_number_machine_deployments()
             self.get_namespace()
             for eachnamespace in self.namespacesDict.keys():
-                self.get_all_for_namespace(eachnamespace)            
+                self.get_all_for_namespace(eachnamespace)
+            if not isAdminCluster:    
+                self.get_machine_deployment_name()    
             self.description()
             self.detaillog.detail2file("Self server ip for cluster {}: {}".format(self.clustername, self.serverip))
             self.detaillog.detail2file("Number of machines in the cluster: ".format(self.readyreplicas))
 
     def get_cluster_name(self):
         cmdline = 'kubectl --kubeconfig {} get cluster'.format(self.clustercfgfile)
+        cmdoutput = None
         self.detaillog.detail2file(cmdline)
         try:
             (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
         except Exception as e:
-            self.clustername = None 
+            self.clustername = None
         self.detaillog.detail2file(cmdoutput)
         pattern = re.compile(r"([a-zA-Z\d\-]+)\s+(\d+)(s|d|m|h)")
         if pattern.search(cmdoutput) != None:
@@ -746,18 +722,31 @@ class gkeonpremcluster:
     def get_gke_version(self):
         self.control_version = None
         cmdline = 'kubectl --kubeconfig {} describe cluster {}'.format(self.clustercfgfile, self.clustername)
-                
         self.detaillog.detail2file(cmdline)
         try:
              (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
         except Exception as e:
-              self.control_version = None     
+              self.control_version = None
         self.detaillog.detail2file(cmdoutput)
         #Control Plane Version:    1.11.2-gke.31
         pattern = re.compile(r"Control\sPlane\sVersion:\s*([a-zA-Z\d\-\.]+)")
         matched = pattern.search(cmdoutput)
         if matched:
             self.control_version = matched.group(1)
+
+
+
+    def get_machine_deployment_name(self):
+        cmdline = 'kubectl --kubeconfig {} get machinedeployments'.format(self.clustercfgfile)
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+        self.detaillog.detail2file(retoutput)
+        machine_deployment_name = None
+        deployment_pattern = re.compile(r"([a-zA-Z0-9\-]+)\s*[0-9]+")
+        if deployment_pattern.search(retoutput):
+            machine_deployment_name = deployment_pattern.search(retoutput).group(1)
+        self.machine_deployment_name = machine_deployment_name
+        print "get_machine_deployment_name: ", self.machine_deployment_name
+
 
     def get_number_machine_deployments(self):
         #  Available Replicas:    3
@@ -766,11 +755,12 @@ class gkeonpremcluster:
         #  Replicas:              10
         #  Unavailable Replicas:  7
         #  Updated Replicas:      10
-
+        self.readyreplicas = 1
+        return
         availablereplicas = -1
         unavailablereplicas = -1
         readyreplicas = 0
-        updatedreplicas = -2 
+        updatedreplicas = -2
         retry = 60
         count = 0
         interval = 2
@@ -796,8 +786,8 @@ class gkeonpremcluster:
                 matched = pattern.search(retoutput)
                 if matched:
                     unavailablereplicas = matched.group(1)
-                else:   
-                    unavailablereplicas = 0  
+                else:
+                    unavailablereplicas = 0
                 pattern = re.compile(r"Ready\sReplicas:\s+(\d+)")
                 matched = pattern.search(retoutput)
                 if matched:
@@ -815,7 +805,6 @@ class gkeonpremcluster:
             (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
-    
         self.detaillog.detail2file(cmdoutput)
         pattern = re.compile(r"2 packets transmitted, 2 received, 0% packet loss")
         if pattern.search(cmdoutput) != None:
@@ -828,22 +817,20 @@ class gkeonpremcluster:
         cluser_server_ip = '0.0.0.0'
         with open(self.clustercfgfile) as cfgfile:
             cfgoutput = cfgfile.read()
-            #print cfgoutput
             pattern = re.compile(r"server:\shttps:\/\/(\d+.\d+.\d+.\d+):443")
             if pattern.search(cfgoutput) != None:
-                #print "found server ip"
                 cluser_server_ip = pattern.search(cfgoutput).group(1)
 
         self.serverip = cluser_server_ip
 
     def description(self):
         if self.isAdminCluster:
-            self.detaillog.detail2file("Cluster defined in {} is admin cluster".format(self.clustercfgfile))  
+            self.detaillog.detail2file("Cluster defined in {} is admin cluster".format(self.clustercfgfile))
             return "Admin Cluster defined in {} is admin cluster".format(self.clustercfgfile)
         else:
             self.detaillog.detail2file("Cluster defined in {} is user cluster ".format(self.clustercfgfile))
             return "User Cluster defined in {} is user cluster".format(self.clustercfgfile)
-         
+
     def dump_cluster_all(self):
         cmdline = 'kubectl --kubeconfig {} get all --all-namespaces'.format(self.clustercfgfile)
         self.detaillog.detail2file(cmdline)
@@ -851,7 +838,7 @@ class gkeonpremcluster:
             (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
-            exit()
+            sys.exit()
         self.detaillog.detail2file(cmdoutput)
         return cmdoutput
 
@@ -868,7 +855,6 @@ class gkeonpremcluster:
                 (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
             except Exception as e:
                 self.detaillog.detail2file(cmdoutput)
-                #print "Run cmd {} fails.".format(cmdline)
                 return (retcode, cmdoutput)
             self.detaillog.detail2file(cmdoutput)
 
@@ -898,7 +884,7 @@ class gkeonpremcluster:
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
             self.detaillog.detail2file(cmdoutput)
-            return (retcode, cmdoutput) 
+            return (retcode, cmdoutput)
 
         self.detaillog.detail2file(cmdoutput)
         return (retcode, cmdoutput)
@@ -914,7 +900,7 @@ class gkeonpremcluster:
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
             self.detaillog.detail2file(cmdoutput)
-            return (retcode, cmdoutput) 
+            return (retcode, cmdoutput)
 
         self.detaillog.detail2file(cmdoutput)
         self.objectsList.remove(namespace)
@@ -928,13 +914,12 @@ class gkeonpremcluster:
         cmdline = 'kubectl --kubeconfig {} scale --replicas={} deployment/{} -n {}'.format(self.clustercfgfile, new_replica, deployment_name, workloadns)
 
         self.detaillog.detail2file(cmdline)
-        try: 
-            (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)     
+        try:
+            (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
             self.detaillog.detail2file(cmdoutput)
-            return (retcode, cmdoutput) 
-    
+            return (retcode, cmdoutput)
         self.detaillog.detail2file(cmdoutput)
         return (retcode, cmdoutput)
 
@@ -950,19 +935,18 @@ class gkeonpremcluster:
         #kubectl --kubeconfig {} patch machinedeployment cpe-user-1-1 -p "{\"spec\": {\"replicas\": 3}}" --type=merge
         #machinedeployment.cluster.k8s.io/cpe-user-1-1 patched
         cmdline = 'kubectl --kubeconfig {} patch machinedeployment {} --patch "$(cat patch.node.yaml)"  --type=merge'.format(self.clustercfgfile, self.clustername)
-        try: 
+        try:
             (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=0)
         except Exception as e:
             print "Run cmd {} fails.".format(cmdline)
             self.detaillog.detail2file(cmdoutput)
             return (retcode, cmdoutput)
-    
         self.detaillog.detail2file(retOutput)
         return (retcode, cmdoutput)
 
     def gkectl_diagnose_cluster(self):
         retry = 15
-        interval = 2 
+        interval = 2
         retOutput = ""
         count = 0
         check_output = "Cluster is healthy"
@@ -999,7 +983,7 @@ class gkeonpremcluster:
 
         for eachline in cmdoutput:
             self.namespacesDict[eachline.split()[0]] = eachline.split()[1:]
-        
+
 
     def get_all_for_namespace(self, namespace):
         #ubuntu@admin-beta-4:~/anthos_ready$ kubectl  --kubeconfig kubecfg/cpe-user-1-1-kubeconfig get all -n nginx-sanity-ns
@@ -1016,15 +1000,14 @@ class gkeonpremcluster:
 
         #NAME                                           DESIRED   CURRENT   READY     AGE
         #replicaset.apps/nginx-sanity-test-67b5687c6d   3         3         3         1m
-        retry = 30 
+        retry = 30
         count = 0
         internal = 2
         stable_state = False
-        cmdoutput = "" 
-        
+        cmdoutput = ""
         cmdline = 'kubectl --kubeconfig {} get all -n {}'.format(self.clustercfgfile, namespace)
         self.detaillog.detail2file(cmdline)
-        while count < retry and not stable_state: 
+        while count < retry and not stable_state:
             print "Polling all objects in namespace {}.".format(namespace)
             try:
                 (retcode, cmdoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
@@ -1039,8 +1022,6 @@ class gkeonpremcluster:
 
             except Exception as e:
                 print "Run cmd {} fails.".format(cmdline)
-    
-    
         cmdoutput = cmdoutput.splitlines()[1:]
 
         pods = {}
@@ -1055,13 +1036,13 @@ class gkeonpremcluster:
         replicasetpattern = re.compile(r"^replicaset.apps\/([a-zA-Z0-9\-]*)\s*([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*")
         daemonsetpattern = re.compile(r"^daemonset.apps\/([a-zA-Z0-9\-]*)\s*([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*([0-9]*)\s*")
         statefulsetpattern = re.compile(r"statefulset.apps\/([a-zA-Z0-9\-]*)\s*([0-9]*)\s*([0-9aa-z]*)\s*")
-        found = False 
+        found = False
         for eachline in cmdoutput:
             matchresult = podpattern.search(eachline)
             if matchresult:
                 pods[matchresult.group(1)] = [matchresult.group(2), matchresult.group(3), matchresult.group(4), matchresult.group(5)]
                 found = True
-                continue     
+                continue
             matchresult = deploymentpattern.search(eachline)
             if matchresult:
                 deployment[matchresult.group(1)] = [int(matchresult.group(2)), int(matchresult.group(3)), matchresult.group(4), matchresult.group(5)]
@@ -1111,11 +1092,13 @@ def get_gkectl_version():
 
 def test_abort(testreportlog, cluster=None):
     testreportlog.info2file("Test is aborted.")
+    if not cluster:
+        sys.exit(1)
     if cluster.isAdminCluster:
         generate_test_summary(testreportlog, cluster, None)
     else:
         generate_test_summary(testreportlog, None, cluster)
-    exit() 
+    sys.exit(1)
 
 
 def test_workload_deleted(cluster, namespace):
@@ -1123,7 +1106,7 @@ def test_workload_deleted(cluster, namespace):
     test_detail = "Workload defined by {} is deleted for cluster {} in namespace {}.".format(workloadyaml, cluster.clustercfgfile, namespace)
     test_name = 'test_workload_deleted'
     cmdline = 'kubectl --kubeconfig={} get all -n {}'.format(cluster.clustercfgfile, namespace)
-    #print cmdline
+    testreportlog.info2file(cmdline)
     retcode, retoutput = RunCmd(cmdline, 15, None, wait=2, counter=3)
     if "No resources found" in retoutput:
         test_result = "PASS"
@@ -1131,12 +1114,11 @@ def test_workload_deleted(cluster, namespace):
         test_result = "FAIL"
     testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
     test_results.append([test_name, test_result, test_detail])
-    #print retcode,retoutput
     if test_result == "FAIL" and abortonfailure:
         test_abort(testreportlog, cluster)
 
     return test_result=="PASS"
- 
+
 
 def test_cluster_sanity(cluster, testreportlog):
     abortonfailure = test_cfg['abortonfailure']
@@ -1165,27 +1147,27 @@ def test_machinedeployment_update(usercluster, testreportlog):
     test_name = "test_machinedeployment_update"
     usercluster.get_number_machine_deployments()
     tempnode = max(3, usercluster.readyreplicas)
-    for newmachine in [tempnode+delta, tempnode]: 
+    for newmachine in [tempnode+delta, tempnode]:
         test_detail = "Modify number of machine deployment for cluster defined by {} to {}.".format(usercluster.clustercfgfile, newmachine)
         test_result = "FAIL"
         count = 0
         usercluster.change_number_of_machine_deployment(newmachine, patchnodeyaml)
-        while count < retry and test_result == "FAIL": 
+        while count < retry and test_result == "FAIL":
             usercluster.get_number_machine_deployments()
             if usercluster.readyreplicas == newmachine:
                 test_result = "PASS"
             else:
                 test_result="FAIL"
                 countdown(interval)
-            count += 1    
-        
+            count += 1
+
         testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
         test_results.append([test_name, test_result, test_detail])
 
         if test_result == "FAIL" and abortonfailure:
             test_abort(testreportlog, usercluster)
- 
-    return test_result == "PASS"    
+
+    return test_result == "PASS"
 
 
 def test_workload_deployment(usercluster, testreportlog):
@@ -1272,13 +1254,13 @@ def test_workload_pod_state(usercluster, workloadns, expected_state, testreportl
         if not each[2] == expected_state:
             test_result="FAIL"
             continue
-    testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))        
+    testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
     test_results.append([test_name, test_result, test_detail])
     if test_result == "FAIL" and abortonfailure:
         test_abort(testreportlog, usercluster)
 
     return  test_result == "PASS"
-        
+
 
 def test_workload_service_state(usercluster, workloadns, service_type, testreportlog):
     abortonfailure = test_cfg['abortonfailure']
@@ -1286,7 +1268,7 @@ def test_workload_service_state(usercluster, workloadns, service_type, testrepor
     test_detail = "Verify service for workload specified by {} deployed in cluster {} has {} at {}.".format(workloadns, usercluster.clustername, service_type, expected_lb_ip)
     test_name = "test_workload_service_state"
     #print usercluster.objectsDict[workloadns]
-    
+
     if usercluster.objectsDict[workloadns][1].values()[0][0] == service_type and usercluster.objectsDict[workloadns][1].values()[0][2] == expected_lb_ip:
         test_result="PASS"
     else:
@@ -1363,10 +1345,13 @@ def test_service_traffic(usercluster, concurrent_session, total_request, expecte
     interval = 2
     count = 0
     match_string = "Finished {} requests".format(total_request)
+    finished_pattern = re.compile(r"Complete\srequests:\s*(\d*)")
+    failed_pattern = re.compile(r"Failed\srequests:\s*0")
     traffic_passed = False
+
     while count < retry and not traffic_passed:
         retOutput = ""
-        try: 
+        try:
             (retcode, retOutput) = RunCmd(cmdline, 10*expected_duration, None, wait=2, counter=0)
         except:
             count += 1
@@ -1377,26 +1362,28 @@ def test_service_traffic(usercluster, concurrent_session, total_request, expecte
 
         if retcode == 1:
             print "Fail to run cmd {}".format(cmdline)
-            count += 1
+            counttraffic_passed = True
             testreportlog.info2file(retOutput)
             countdown(interval)
             continue
         else:
             testreportlog.info2file(retOutput)
-            if  match_string in retOutput:
+            if finished_pattern.search(retOutput) != None:
+                passed_request = int(finished_pattern.search(retOutput).group(1))
                 traffic_passed = True
-        countdown(interval)    
-    if retcode == 1:   
+        countdown(interval)
+
+    if retcode == 1:
         test_result = "FAIL"
     else:
-        if match_string in retOutput:
+        if traffic_passed:
             timepattern = re.compile(r"Time\staken\sfor\stests:\s+(\d+\.\d*)\sseconds")
             if timepattern.search(retOutput) != None:
                 actual_time_used = float(timepattern.search(retOutput).group(1))
                 print "Actual_time_used: {} seconds".format(actual_time_used)
                 testreportlog.info2file("Actual time used: {} for {} request with {} concurrent sessions".format(actual_time_used, total_request, concurrent_session))
                 testreportlog.info2file("Ideal time used should be less than 0.5s for {} request with {} concurrent sessions.".format(total_request, concurrent_session))
-                if actual_time_used < expected_duration:
+                if actual_time_used < expected_duration and passed_request == total_request:
                     test_result = "PASS"
                 else:
                     test_result = "FAIL"
@@ -1417,16 +1404,215 @@ def cluster_cleanup(usercluster):
     namespace, _, _, _ = get_info_from_workload_yaml_file()
     if namespace in usercluster.objectsList:
         usercluster.delete_namespace(namespace)
-    #print usercluster.objectsList
 
+
+def create_gke_onprem_cluster(yamlfile, testreportlog):
+    test_detail = "Verify gkectl can create a new GKE OnPrem Cluster defined by {}.".format(yamlfile)
+    test_name = "test_gke_onprem_cluster_creation"
+    abortonfailure = test_cfg['abortonfailure']
+    clustercfgpath = test_cfg['clustercfgpath']
+    cmdline = "gkectl check-config --config {}".format(yamlfile)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 60, None, wait=2, counter=3)
+    except:
+        print "Fail to run cmd {}".format(cmdline)
+    if retcode == 1 or not "All validations SUCCEEDED" in retoutput or "FAILURE" in retoutput:
+        testreportlog.info2file("Cluster creation yaml file {} fails to pass sanity check.".format(yamlfile))
+        test_result = "FAIL"
+
+    cmdline = "gkectl prepare --config {} --validate-attestations".format(yamlfile)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 120, None, wait=2, counter=3)
+    except:
+        print "Fail to run cmd {}".format(cmdline)
+    if retcode == 1 or "error" in retoutput:
+        testreportlog.info2file("Cluster prepare cmd fails for yaml file {} .".format(yamlfile))
+        test_result = "FAIL"
+
+    cmdline = "gkectl create cluster --config {} --kubeconfig-out {}/kubeconfig".format(yamlfile, clustercfgpath)
+    testreportlog.info2file(cmdline)
+    try:
+       (retcode, retoutput) = RunCmd(cmdline, 2000, None, wait=2, counter=3)
+    except:
+        print "Fail to run cmd {}".format(cmdline)
+    if retcode == 1 or "FAILURE" in retoutput:
+        testreportlog.info2file("Cluster creation fail using yaml file {}.".format(yamlfile))
+        test_result = "FAIL"
+    else:
+        test_result="PASS"
+
+    testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
+    test_results.append([test_name, test_result, test_detail])
+    if test_result == "FAIL" and abortonfailure:
+        test_abort(testreportlog)
+
+    return  test_result == "PASS"
+
+
+def test_create_gke_on_prem_cluster(testreportlog):
+    clusteryamlfile = "{}/{}".format(test_cfg['clustercfgpath'], test_cfg['createyamlfile'])
+    testreportlog.info2file('The script is going to create a brand new GKE On-Prem Cluster defined by creation yaml file {}.'.format(clusteryamlfile))
+    retcode = create_gke_onprem_cluster(clusteryamlfile, testreportlog)
+
+    if not retcode:
+        testreportlog.info2file('Fail to create GKE OnPrem Cluster')
+        sys.exit(1)
+    else:
+        cmdline = "grep clustername: {}".format(clusteryamlfile)
+        (retcode, retoutput) = RunCmd(cmdline, 10, None, wait=2, counter=3)
+        user_cluster_name = None
+        if retcode == 0:
+            namepattern = re.compile(r"clustername: \"([a-zA-Z0-9\-]+)\"")
+            if namepattern.search(retoutput):
+                user_cluster_name = namepattern.search(retoutput).group(1)
+            else:
+                print "fail to find user cluster name"
+                sys.exit(0)
+        else:
+            print "fail to find user cluster name"
+            sys.exit(0)
+
+        test_cfg['admcfg'] = 'kubeconfig'
+        test_cfg['usercfg'] = "{}-kubeconfig".format(user_cluster_name)
+        testreportlog.info2file('GKE OnPrem Cluster is created. 2 kubeconfig files: {}, {} under {}'.format(test_cfg['admcfg'], test_cfg['usercfg'], test_cfg['clustercfgpath']))
+
+
+def delete_user_cluster(admincluster, usercluster, testreportlog):
+    # REF: https://cloud.google.com/gke-on-prem/docs/how-to/administration/deleting-a-user-cluster
+    # TODO: this is not working. Need to re-visit.
+    abortonfailure = test_cfg['abortonfailure']
+    test_detail = "Verify user cluster {} can be deleted.".format(usercluster.clustername)
+    test_name = "test_user_cluster_deletion"
+    test_result = "FAIL"
+
+    print usercluster.clustercfgfile, usercluster.clustername
+    try:
+        cmdline = "kubectl --kubeconfig {} delete monitoring --all -n kube-system".format(usercluster.clustercfgfile)
+        testreportlog.info2file(cmdline) 
+        (retcode, retoutput) = RunCmd(cmdline, 60, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+
+    try:    
+        cmdline = "kubectl --kubeconfig {} delete stackdriver --all -n kube-system".format(usercluster.clustercfgfile)
+        testreportlog.info2file(cmdline) 
+        (retcode, retoutput) = RunCmd(cmdline, 60, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+    
+
+    cmdline = "kubectl --kubeconfig {} get pvc -n kube-system".format(usercluster.clustercfgfile)
+    testreportlog.info2file(cmdline)
+    try: 
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+    
+    print retoutput
+    if retcode == 0:
+        pvc_pattern = re.compile(r"([a-zA-Z0-9\-]+)\s*Bound\s*pvc")
+        pvc_list = []
+        for eachline in retoutput.splitlines():
+            print eachline
+            if pvc_pattern.search(eachline):
+                pvc_list.append(eachline.split()[0])
+        print pvc_list        
+        for eachpvc in pvc_list:
+            cmdline = "kubectl --kubeconfig {} delete pvc {} -n kube-system".format(usercluster.clustercfgfile, eachpvc)
+            testreportlog.info2file(cmdline)
+            try:
+                (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+            except:
+                print "fail to run cmd {}".format(cmdline)
+            print retcode, retoutput
+    
+    cmdline = "kubectl --kubeconfig {} delete ns gke-system".format(usercluster.clustercfgfile)
+    ### the above cmd fails
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+
+    print retoutput
+
+
+    cmdline = "kubectl --kubeconfig {} delete machinedeployments {}".format(usercluster.clustercfgfile, usercluster.machine_deployment_name)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+
+
+    # delete additional machine if existing
+    cmdline = "kubectl --kubeconfig {} get machines".format(usercluster.clustercfgfile)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+    if retcode == 0:
+        pvc_pattern = re.compile(r"([a-zA-Z0-9\-]+)\s*[0-9]+")
+        pvc_list = []
+        for eachline in retoutput.splitlines():
+            if pvc_pattern.search(eachline):
+                pvc_list.append(eachline.split()[0])
+        for eachpvc in pvc_list:
+            cmdline = "kubectl --kubeconfig {} delete machines {} ".format(usercluster.clustercfgfile,eachpvc)
+            testreportlog.info2file(cmdline)
+            try:
+                (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+            except:
+                print "fail to run cmd {}".format(cmdline)
+            print retcode, retoutput
+
+
+    #kubectl delete machines
+    #kubectl --kubeconfig [ADMIN_CLUSTER_KUBECONFIG] get cluster --all-namespaces
+    #kubectl --kubeconfig [ADMIN_CLUSTER_KUBECONFIG] delete machinedeployments -l kubernetes.googleapis.com/cluster-name=
+    cmdline = "kubectl --kubeconfig {} delete machinedeployments -l kubernetes.googleapis.com/cluster-name={}".format(admincluster.clustercfgfile, usercluster.clustername)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)
+   
+  
+
+    cmdline = "kubectl --kubeconfig {} delete cluster {}".format(admincluster.clustercfgfile, usercluster.clustername)
+    try:
+        (retcode, retoutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+    except:
+        print "fail to run cmd {}".format(cmdline)    
+
+    #### verfiy user cluster is deleted
+    #1. kubectl get pvc -n kube-system
+    #2. kubectl get statefulsets -n kube-system
+    #3. kubectl get configmap --all-namespaces --selector=f5type=virtual-server -o jsonpath='{.items[*].metadata.annotations.status\.virtual-server\.f5\.com/ip}'
+    #4. kubectl get namespaces
+    #5. kubectl --kubeconfig [ADMIN_CLUSTER_KUBECONFIG] get machines -l kubernetes.googleapis.com/cluster-name=<name>
+
+    print retoutput
+    if retcode == 0:
+        test_result = "SUCCESS"
+
+    testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
+    test_results.append([test_name, test_result, test_detail])
+    if test_result == "FAIL" and abortonfailure:
+        test_abort(testreportlog)
+
+    return test_result == "SUCCESS"
 
 def test_workflow_state(usercluster, testreportlog, workloadns, expected_state, expected_number, service_type):
     lbsvcip = test_cfg['lbsvcip']
     abortonfailure = test_cfg['abortonfailure']
 
-    concurrent_session = 100
-    total_request = 10000
-    expected_duration = 5
+    total_request = test_cfg['totalreq']
+    concurrent_session = test_cfg['concurrent']
+    expected_duration = test_cfg['maxtime']
 
     usercluster.get_all_for_namespace(workloadns)
     if test_workload_deployed(usercluster, workloadns, testreportlog):
@@ -1448,7 +1634,7 @@ def user_cluster_test(usercluster, testreportlog):
     if not usercluster.check_cluster_server_connectivity():
         testreportlog.info2file('User Cluster Server IP {} is not reachable! Test Aborted'.format(usercluster.serverip))
         print('User Cluster Server IP {} is not reachable! Test Aborted'.format(admincluster.serverip))
-        exit()
+        sys.exit()
     else:
         testreportlog.info2file(usercluster.description())
         testreportlog.info2file(usercluster.dump_cluster_all())
@@ -1483,18 +1669,92 @@ def prepare_logging():
     return anthosreportlog, testreportlog
 
 
+def create_user_cluster(admincluster, testreportlog):
+    clustercfgpath = test_cfg['clustercfgpath']
+    admincfg = admincluster.clustercfgfile
+    clusteryaml = test_cfg['clusteryaml']
+    clustername = test_cfg['userclustername']
+    bigippartition = test_cfg['userpartition']
+    controlplanevip = test_cfg['controlplanevip']
+    ingressvip = test_cfg['ingressvip']
+    ipblock = test_cfg['staticipblock']
+    abortonfailure = test_cfg['abortonfailure']
+
+
+    test_result = "FAIL"
+    test_detail = "Verify a new user cluster {} can be created in admin cluster defined by {}.".format(clustername, admincfg)
+    test_name = "test_new_user_cluster_creation"
+
+
+    testreportlog.info2file("Start creating a new user cluster:")
+    testreportlog.info2file("      cluster create yaml file: {}".format(clusteryaml))
+    testreportlog.info2file("      cluster name: {}".format(clustername))
+    testreportlog.info2file("      partition for user cluster: {}".format(bigippartition))
+    testreportlog.info2file("      controlplanevip: {}".format(controlplanevip))
+    testreportlog.info2file("      ingressvip: {}".format(ingressvip))
+
+    sourceyamlfile = "{}/{}".format(clustercfgpath, clusteryaml)
+
+    newuseryaml = generate_user_cluster_create_yaml(sourceyamlfile, clustername, bigippartition, controlplanevip, ingressvip, ipblock)
+    if not newuseryaml and abortonfailure:
+        test_abort(testreportlog)
+
+    cmdline = "gkectl create cluster --config {} --kubeconfig {} --kubeconfig-out {}/{}-kubeconfig -v 7".format(newuseryaml, admincfg, clustercfgpath, clustername)
+    testreportlog.info2file(cmdline)
+    try:
+        (retcode, cmdoutput) = RunCmd(cmdline, 2400, None, wait=2, counter=3)
+    except Exception as e:
+        testreportlog.info2file("Run cmd {} fails.".format(cmdline))
+    if retcode == 0:
+        test_result="PASS"
+    else:
+        test_result="FAIL"
+
+    testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
+    test_results.append([test_name, test_result, test_detail])
+    if test_result == "FAIL" and abortonfailure:
+        test_abort(testreportlog, admincluster)
+    return test_result == "PASS"         
+
+
+def wait_for_gkectl_done():
+    timeout = 6000
+    count = 0 
+    cmdline = "ps -eaf|grep gkectl"
+    gkectl_done = False
+    while count < timeout and not gkectl_done:
+        time.sleep(5)
+        print "wait......"
+        (retcode, retOutput) = RunCmd(cmdline, 15, None, wait=2, counter=3)
+        if not "gkectl create cluster" in retOutput:
+            gkectl_done = True
+        count += 5    
+
+
 def get_cluster_list(testreportlog):
     clustercfgpath = test_cfg['clustercfgpath']
     userclustercfgs = test_cfg['usercfg'].split(',')
 
     adminclustercfgfile = '{}/{}'.format(test_cfg['clustercfgpath'], test_cfg['admcfg'])
-    admincluster = gkeonpremcluster(adminclustercfgfile, True, testreportlog)
-
+    admincluster = gkeonpremcluster(adminclustercfgfile, True, testreportlog) 
     usercluster_list = []
+
+    if test_cfg['newusercluster']:
+        testreportlog.info2file('Script is going to create a new user cluster.')
+        testreportlog.info2file('Please make sure vcenter and F5 are ready for new user cluster creation, If not you can press Ctl+C to abort.')
+        if create_user_cluster(admincluster, testreportlog):
+            newusercfg = "{}-kubeconfig".format(test_cfg['userclustername'])
+            userclustercfgs.append(newusercfg)
+        else:
+            print "Fail to create user cluster"
+
+
     for userclustercfg in userclustercfgs:
         userclustercfgfile = '{}/{}'.format(clustercfgpath, userclustercfg)
         usercluster = gkeonpremcluster(userclustercfgfile, False, testreportlog)
         usercluster_list.append(usercluster)
+    
+
     return admincluster, usercluster_list
 
 
@@ -1560,6 +1820,66 @@ def get_platform_detail(cfgfile):
     return platform_info_list
 
 
+def generate_user_cluster_create_yaml(source_create_yaml_file, clustername, partition, controlplanevip, ingressvip, ipblock):
+    clustercfgpath = test_cfg['clustercfgpath']
+    user_cluster_create_yaml = "{}/new_user_cluster.yaml".format(clustercfgpath)
+    print source_create_yaml_file, clustername, partition, controlplanevip, ingressvip, ipblock
+    with open(source_create_yaml_file) as f:
+        output = f.read()
+    admin_index = output.find('admincluster:')
+    user_index = output.find('usercluster:')
+    if not admin_index == -1  and not user_index == -1:
+        first_part = output[:admin_index-1]
+        user_part = output[user_index:]
+    patterncontrol = re.compile(r'controlplanevip: \"([\d.]*)\"')
+    if patterncontrol.search(user_part):
+        control_ip = patterncontrol.search(user_part).group(1)
+    else:
+        print "Fail to create create yaml file for new user cluster"
+        return False 
+    user_part = user_part.replace(control_ip, controlplanevip)
+    patterningress = re.compile(r'ingressvip: \"([\d.]*)\"')
+    if patterningress.search(user_part):
+        ingress_ip = patterningress.search(user_part).group(1)
+    else:
+        print "Fail to create create yaml file for new user cluster"
+        return False
+    user_part = user_part.replace(ingress_ip, ingressvip)
+
+    patternname = re.compile(r'clustername:\s\"([A-Za-z0-9\-]+)\"')
+    if patternname.search(user_part):
+        oldclustername = patternname.search(user_part).group(1)
+        user_part = user_part.replace(oldclustername, clustername)
+    else:
+        print "Fail to create create yaml file for new user cluster"
+        return False
+
+    patternipblock = re.compile(r'ipblockfilepath:\s*\"(.+)\"')
+    old_ip_block = None
+    if patternipblock.search(user_part):
+        old_ip_block = patternipblock.search(user_part).group(1)
+
+    if ipblock:
+        if len(old_ip_block) > 4:
+            user_part = user_part.replace(old_ip_block, "{}/{}".format(clustercfgpath, ipblock))
+        else:
+            print "The reference yaml file {} does not use static ip.".format(source_create_yaml_file)
+            print "To use static ip for user cluster, the original admin/user cluster needs to use static ip too.".format(source_create_yaml_file)
+            return False
+    else:
+        if len(old_ip_block) > 4:
+            patternipblock = re.compile(r'ipblockfilepath:\s*\"(.+)\"')
+            user_part = user_part.replace('ipblockfilepath:','# ipblockfilepath:')
+            print "Note: The reference yaml file {} use static ip.".format(source_create_yaml_file)
+            print "User cluster is going to use DHCP.".format(source_create_yaml_file)
+
+    with open(user_cluster_create_yaml, 'w') as f:
+         f.write(first_part)
+         f.write("\n\n")
+         f.write(user_part)
+    return True 
+
+
 def generate_test_summary(testreportlog, admincluster, usercluster):
     platformcfgfile = test_cfg['platformcfgfile']
     partner = test_cfg['partner']
@@ -1575,20 +1895,28 @@ def generate_test_summary(testreportlog, admincluster, usercluster):
     padding = '=' * 175
     testreportlog.info2file('\n\n')
     testreportlog.changeformat()
-    platform_info_list = get_platform_detail(platformcfgfile)
+    if not "unknown" in platformcfgfile:
+        platform_info_list = get_platform_detail(platformcfgfile)
+    else:
+        platform_info_list = []
     testreportlog.info2file("Summary:")
     testreportlog.info2file("    gkectl version: {}, gke_onprem_test version: {}".format(gkectl_ver, VERSION))
     testreportlog.info2file("    partner: {}, platform detail: {}".format(partner, platformcfgfile))
     if len(platform_info_list) > 0:
         for eachline in platform_info_list:
             testreportlog.info2file("      {}".format(eachline.strip()))
-    if usercluster and admincluster:        
+
+    testreportlog.info2file("    Traffic Test Profile: Total Requests: {}".format(test_cfg['totalreq']))
+    testreportlog.info2file("                          Concurrent Sessions: {}".format(test_cfg['concurrent']))
+    testreportlog.info2file("                          Expect to finish all requests in {} seconds".format(test_cfg['maxtime']))
+
+    if usercluster and admincluster:
         testreportlog.info2file("    admin cluster version: {}, user cluster version: {}".format(admincluster.control_version, usercluster.control_version))
     elif admincluster and not usercluster:
         testreportlog.info2file("    admin cluster version: {}".format(admincluster.control_version))
     elif not admincluster and usercluster:
         testreportlog.info2file("    user cluster version: {}".format(usercluster.control_version))
-     
+
     testreportlog.info2file("    Total Tests: {}, Passed Tests: {}, Failed Tests: {}".format(len(test_results), passed_tests, failed_tests))
     testreportlog.info2file(padding)
     for eachcase in test_results:
@@ -1598,20 +1926,36 @@ def generate_test_summary(testreportlog, admincluster, usercluster):
 
 def testargparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-cfgpath', '--clustercfgpath', dest='clustercfgpath', help='Path for cluster kube config files', type=str, default=None, required=True)
-    parser.add_argument('-admin', '--adminclustercfg', dest='admcfg', type=str, help='Admin Cluster kubeconfig file',default=None, required=True)
-    parser.add_argument('-user', '--userclustercfg', dest='usercfg', type=str, help='User Cluster kubeconfig files', default=None, required=True)
-    parser.add_argument('-lbip', '--lbsvcip', dest='lbsvcip', help='IP Address for Load-balancer for service to be deployed', type=str, default=None, required=True)
-    parser.add_argument('-testlog', '--anthostestlog', dest='anthostestlog', help='Prefix for test log file', type=str, default='gkeonprem.test')
+    parser.add_argument('-cfgpath', '--clustercfgpath', dest='clustercfgpath', help='Absolute Path for cluster kubeconfig files', type=str, default=None)
+    parser.add_argument('-admin', '--adminclustercfg', dest='admcfg', type=str, help='Admin Cluster kubeconfig file',default=None )
+    parser.add_argument('-user', '--userclustercfg', dest='usercfg', type=str, help='User Cluster kubeconfig files', default=None)
+    parser.add_argument('-lbip', '--lbsvcip', dest='lbsvcip', help='IP Address for Load-balancer for service to be deployed', type=str, default=None)
+    parser.add_argument('-testlog', '--testlog', dest='anthostestlog', help='Prefix for test log file', type=str, default='gkeonprem.test')
     parser.add_argument('-gcs', '--gcsbucket', dest='gcsbucket', help='GCS bucket where file is to be uploaded to', type=str, default=None)
-    parser.add_argument('-serviceacct', '--serviceacct', dest='serviceacct', help='service account used to authorize for GCS service', type=str, default=None)
+    parser.add_argument('-serviceacct', '--serviceacct', dest='serviceacct', help='Google Cloud service account', type=str, default=None)
     parser.add_argument('-loop', '--testloop', dest='testloop', help='number of loops test cases to be run', type=int, default=1)
     parser.add_argument('-abort', '--abortonfailure', dest='abortonfailure', help='flag to set whether to abort test if failure occures', action='store_true', default=False)
     parser.add_argument('-partner', '--partner', dest='partner', type=str, help='Anthos Partner', default='unknown')
     parser.add_argument('-platformcfg', '--platformcfgfile', dest='platformcfgfile', help='Partner provided file for platform detail information', type=str, default='unknown')
     parser.add_argument('-lightmode', '--lightmode', dest='lightmode', action='store_true', help=argparse.SUPPRESS,  default=False)
+    parser.add_argument('-request', '--totalrequest', dest='totalreq', type=int, help='Total Requests sent to the deployed service', default=10000)
+    parser.add_argument('-concurrent', '--concurrent', dest='concurrent', type=int, help='Number of concurrent sessions initialized with the deployed service', default=100)
+    parser.add_argument('-maxtime', '--maxtime', dest='maxtime', type=int, help='Maximum time required to finish all requests in second', default=5)
+
+    parser.add_argument('-createcluster', '--createcluster', dest='createcluster',  action='store_true', help="Flag whether to create a new GKE On-Prem cluster or not, by default flag is set as False ", default=False)
+    parser.add_argument('-createyamlfile', '--createyamlfile', dest='createyamlfile',type=str,  help="yaml file to create a new gke on-prem cluster including admin and user cluster", default=None)
+
+    parser.add_argument('-newusercluster', '--newusercluster', dest='newusercluster',  action='store_true', help='flag whether to create a new user cluster or not, by default, flag is set to False', default=False)
+    parser.add_argument('-clusteryaml', '--clusteryaml', dest='clusteryaml', type=str, help='Yaml file used to create the admin and the first user cluster', default='cpe-user-3.yaml')
+    parser.add_argument('-userclustername', '--userclustername', dest='userclustername', type=str, help='New User Cluster name', default='cpe-user-3-2')
+    parser.add_argument('-userpartition', '--userpartition', dest='userpartition', type=str, help='Partition on BIGIP', default='cpe-user-3-2')
+    parser.add_argument('-controlplanevip', '--controlplanevip', dest='controlplanevip', type=str, help='Control Plan VIP for new cluster', default='100.115.253.93')
+    parser.add_argument('-staticipblock', '--staticipblock', dest='staticipblock', type=str, help='Yaml file for static ip block', default=None)
+    parser.add_argument('-ingressvip', '--ingressvip', dest='ingressvip', type=str, help='Ingress VIP for new cluster', default='100.115.253.94')
+
+
     args = parser.parse_args()
-    
+
     test_cfg['clustercfgpath'] = args.clustercfgpath
     test_cfg['admcfg'] = args.admcfg
     test_cfg['usercfg'] = args.usercfg
@@ -1624,7 +1968,26 @@ def testargparser():
     test_cfg['lightmode'] = args.lightmode
     test_cfg['platformcfgfile'] = args.platformcfgfile
     test_cfg['partner'] = args.partner
-    
+    test_cfg['totalreq'] = args.totalreq
+    test_cfg['concurrent'] = args.concurrent
+    test_cfg['maxtime'] = args.maxtime
+    test_cfg['createcluster'] = args.createcluster
+    test_cfg['createyamlfile'] = args.createyamlfile
+    test_cfg['newusercluster'] = args.newusercluster
+    if test_cfg['createcluster']:
+        test_cfg['clusteryaml'] = test_cfg['createyamlfile']
+    else:
+        test_cfg['clusteryaml'] = args.clusteryaml
+    test_cfg['userclustername'] = args.userclustername
+    test_cfg['userpartition'] = args.userpartition
+    test_cfg['controlplanevip'] = args.controlplanevip
+    test_cfg['staticipblock'] = args.staticipblock
+    test_cfg['ingressvip'] = args.ingressvip
+
+
+
+#runInParallel(func1, func2, func3)
+#time.sleep(10000)
 
 ####### Starts
 # Test Arg Parser
@@ -1636,20 +1999,25 @@ env_prepare()
 # pre-check
 env_check()
 
-
 # set output to stdout
 send_log_to_stdout()
 
 # prepare logging file
 anthosreportlog, testreportlog = prepare_logging()
 
-# create admin cluster object and user cluster objects 
+if test_cfg['createcluster']:
+    testreportlog.info2file('Script is going to create a new GKE OnPrem Cluster defined by yaml file {} specified by argument "-createyamlfile"'.format(test_cfg['createyamlfile']))
+    testreportlog.info2file('Please make sure vcenter and F5 are ready for gke onprem cluster creation, If not you can press Ctl+C to abort.')
+    #countdown(20)
+    test_create_gke_on_prem_cluster(testreportlog)
+
+# create admin cluster object and user cluster objects
 admincluster, userclusters = get_cluster_list(testreportlog)
 
 # gkectl diag test
 gkectl_diag_all_clusters(admincluster, userclusters, testreportlog)
 
-# Cluster Test 
+# Cluster Test
 user_cluster_tests(userclusters, testreportlog)
 
 # gkectl diag test
@@ -1657,6 +2025,7 @@ gkectl_diag_all_clusters(admincluster, userclusters, testreportlog)
 
 # Cleanup user cluster
 cleanup_all_userclusters(userclusters)
+
 
 # Cleanup yaml file generated during test
 delete_yaml_files()
