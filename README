@@ -5,16 +5,16 @@ deployment for Google Cloud Platform Partner.
 
 Prerequisite
 ------------
-An existing GKE On-Prem deployment is DUT and is required before running the
-script.
+The script can create GKE On-Prem admin/user cluster and then run a series of
+test in the cluster; or the script can run a series of test on pre-established
+cluster which have one or more user clusters.
 
-In addition to an existing GKE On-Prem deployment there are a few requirments
-for wrokstation where script is going to run.
+Requirement for wrokstation where script is going to run.
 1. Workstation should have kubectl installed.
 2. Workstation should have gkectl installed.
 3. Workstation should have python installed.
 4. Workstation should have ip access to server's ip for both admin and user
-   cluster.
+   cluster if admin and user cluster are already created.
 5. If desired testlog can be uploaded to Google Cloud Storage bucket.
    Scripe can load service account to have it authenticated for GCS bucket.
 6. Script requires admin cluster kubecfg file and user cluster kubecfg file,
@@ -29,6 +29,7 @@ test script: gke_onprem_test
 Script can be downloaded from:
 1. GCS Bucket gs://anthos_ready_test_script/
    Google Cloud SDK is required to be installed to access GCS bucket.
+2. Github repo: https://github.com/minzhuogoogle/gke-on-prem
 3. Executable python binary: gke_onprem_test
    Note: this script can be run on admin workstation installed using OVA for
    Anthos Release 1.0.10.
