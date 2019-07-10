@@ -169,11 +169,24 @@ comma
 5. Create a new admin/user cluster and continue all tests.
 ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -createcluster -createyamlfile cpe-user-3.yaml -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -controlplanevip 100.115.253.143 -ingressvip 100.115.253.144 -staticipblock user2.ip.yaml 
 
-6. Create a new admin/user cluster and the 2nd user cluster, and continue all tests for all users clusters.
+6. Create a new admin/user cluster and the 2nd user cluster, and continue all tests for all users clusters. Upon test is done delete the 2nd user cluster.
 ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -createcluster -createyamlfile cpe-user-3.yaml -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -controlplanevip 100.115.253.143 -ingressvip 100.115.253.144 -staticipblock user2.ip.yaml 
 
-7. Create a new user cluster and continue all tests for all users clusters.
+7. Create a new user cluster and continue all tests for all users clusters. After test is done, delete user cluster "cpe-user-3-3"
 ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -admin kubeconfig -user cpe-user-3-1-kubeconfig -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-3 -userpartition cpe-user-3-3 -controlplanevip 100.115.253.145 -ingressvip 100.115.253.146 -staticipblock user3.ip.yaml 
+
+8. Create a new user cluster and continue all tests for all users clusters. After test is done, keep user cluster "cpe-user-3-3"
+./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -admin kubeconfig -user cpe-user-3-1-kubeconfig -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-3 -userpartition cpe-user-3-3 -controlplanevip 100.115.253.145 -ingressvip 100.115.253.146 -staticipblock user3.ip.yaml -saveusercluster
+
+9. Create a new admin/user cluster and continue all tests without running "gkectl prepare" before creating admin/user cluster.
+./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.154   -abort -partner  google  -createcluster -createyamlfile cpe-user-3.yaml -newusercluster -clusteryaml cpe-user-3.yaml -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -controlplanevip 100.115.253.143 -ingressvip 100.115.253.144 -staticipblock user2.ip.yaml --skipimageprepare
+
+10. Run test with user defined traffic pattern: total 1000 request using 10 concurrent sessions, expect all requests to be done within 60 seconds.
+./gke_onprem_test  -cfgpath /home/ubuntu/anthos_ready/kubecfg -admin kubeconfig.cpe.1
+-user cpe-user-1,cpe-user-2 -lbip 100.115.253.112   --gcs gs://anthos_ready_test_log
+-serviceacct /home/ubuntu/vsphere/release-reader-key.json
+-platformcfg myplatform.cfg.txt -request 1000 -concurrent 10 -maxtime 60
+
 
 Sample test output:
 --------------------
