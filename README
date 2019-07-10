@@ -6,15 +6,17 @@ deployment for Google Cloud Platform Partner.
 Prerequisite
 ------------
 The script can create GKE On-Prem admin/user cluster and then run a series of
-test in the cluster; or the script can run a series of test on pre-established
-cluster which have one or more user clusters.
+tests in the cluster; or the script can run a series of tests on pre-established
+cluster which have one or more user clusters; or the script can create an additional 
+user cluster and run a series of tests on all user clusters, then delete the newly 
+created user cluster upon user request.
 
 Requirement for wrokstation where script is going to run.
 1. Workstation should have kubectl installed.
 2. Workstation should have gkectl installed.
 3. Workstation should have python installed.
 4. Workstation should have ip access to server's ip for both admin and user
-   cluster if admin and user cluster are already created.
+   cluster.
 5. If desired testlog can be uploaded to Google Cloud Storage bucket.
    Scripe can load service account to have it authenticated for GCS bucket.
 6. Script requires admin cluster kubecfg file and user cluster kubecfg file,
@@ -59,20 +61,21 @@ cluster config file name, user cluster config file name and VIP for workload
 load-balancer.
 
 usage:
-./gke_onprem_test --help
-usage: gke_onprem_test [-h] [-cfgpath CLUSTERCFGPATH] [-admin ADMCFG]
-                       [-user USERCFG] [-lbip LBSVCIP]
-                       [-testlog ANTHOSTESTLOG] [-gcs GCSBUCKET]
-                       [-serviceacct SERVICEACCT] [-loop TESTLOOP] [-abort]
-                       [-partner PARTNER] [-platformcfg PLATFORMCFGFILE]
-                       [-request TOTALREQ] [-concurrent CONCURRENT]
-                       [-maxtime MAXTIME] [-createcluster]
-                       [-createyamlfile CREATEYAMLFILE] [-newusercluster]
-                       [-clusteryaml CLUSTERYAML]
+ubuntu@admin-ga-3:~/anthos_ready_v1.0.2$ ./gke_onprem_test --help
+usage: gke_onprem_test [-h] -cfgpath CLUSTERCFGPATH [-admin ADMCFG]
+                       [-user USERCFG] -lbip LBSVCIP [-testlog ANTHOSTESTLOG]
+                       [-gcs GCSBUCKET] [-serviceacct SERVICEACCT]
+                       [-loop TESTLOOP] [-abort] [-partner PARTNER]
+                       [-platformcfg PLATFORMCFGFILE] [-request TOTALREQ]
+                       [-concurrent CONCURRENT] [-maxtime MAXTIME]
+                       [-createcluster] [-createyamlfile CREATEYAMLFILE]
+                       [-newusercluster] [-clusteryaml CLUSTERYAML]
                        [-userclustername USERCLUSTERNAME]
                        [-userpartition USERPARTITION]
                        [-controlplanevip CONTROLPLANEVIP]
                        [-staticipblock STATICIPBLOCK] [-ingressvip INGRESSVIP]
+                       [-deleteusercluster] [-skipimageprepare]
+                       [-saveusercluster]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -127,6 +130,13 @@ optional arguments:
   -staticipblock STATICIPBLOCK, --staticipblock STATICIPBLOCK
                         Yaml file for static ip block
   -ingressvip INGRESSVIP, --ingressvip INGRESSVIP
+                        Ingress VIP for new cluster
+  -deleteusercluster, --deleteusercluster
+                        flag to set whether to delete user cluser
+  -skipimageprepare, --skipimageprepare
+                        flag to skip image preparation
+  -saveusercluster, --saveusercluster
+                        flag to save user cluster created by the script
 
 
 Sample script run command:
@@ -265,6 +275,12 @@ V1.0.2  July 2019
         3. script supports static ip in addition to DHCP which is by default in V1.0.1.
                If static ip is used, for initial admin/user cluster and each additional user cluster a yaml file which contains ip block should be supplied. 
                Refer to user1.ip.yaml in gs://anthos_ready_test_script for detail.
+
+        4. script supports feature to delete any user cluster.
+               Sample cmd: ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.151  -admin admin-cpe-user-3-kubeconfig -user cpe-user-3-2-kubeconfig  -platformcfg myplatform.cfg.txt -deleteusercluster 
+
+        5. script support feature to clean up newly created user cluster by default. This can be skipped if "-savecluster" is set.  
+               Sample cmd: ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg   -lbip 100.115.253.151   -admin admin-cpe-user-3-kubeconfig -user cpe-user-3-1-kubeconfig  -platformcfg myplatform.cfg.txt  -newusercluster -userclustername cpe-user-3-2 -userpartition cpe-user-3-2 -ingressvip 100.115.253.143 -controlplanevip 100.115.253.144  --staticipblock  user2.ip.yaml
 
 FAQ
 -----
