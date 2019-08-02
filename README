@@ -32,7 +32,8 @@ Executable python binary: gke_onprem_test Note: this script can be run on admin 
 
 All can be downloaded from gcs bucket: gsutil ls gs://anthos_ready_test_script gs://anthos_ready_test_script/README gs://anthos_ready_test_script/admin.ip.yaml gs://anthos_ready_test_script/cpe-user-3.yaml gs://anthos_ready_test_script/gke_onprem_test.v1.0.1 gs://anthos_ready_test_script/gke_onprem_test.v1.0.2 gs://anthos_ready_test_script/myplatform.cfg.txt gs://anthos_ready_test_script/sample.test.log gs://anthos_ready_test_script/user1.ip.yaml gs://anthos_ready_test_script/user2.ip.yaml gs://anthos_ready_test_script/user3.ip.yaml gs://anthos_ready_test_script/user4.ip.yaml
 
-Please download gke_onprem_test.v1.0.1 or gke_onprem_test.v1.0.2, and rename it gke_onprem_test. Python package "six" is required. Please install package "six" if it has not installed yet on the workstation.
+Please download gke_onprem_test which is the latest version or gke_onprem_test.v1.0.x depending on which version you desire to use, and rename it gke_onprem_test. Python package "six" is required. Please install package "six" if it has not installed yet on the workstation.
+
 
 How to run it
 Script requires user to provide one absolute path, and script looks for both admin and user cluster kubeconfig file, yaml cluster creation file, static ip file in the same directory.
