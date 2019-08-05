@@ -45,6 +45,116 @@ If the test is to create a new admin/user cluster or create an additional user c
 IP Address for Load-balancer for service to be deployed is an mandatory argument, please provide an working IP address.
 
 ./gke_onprem_test --help usage: gke_onprem_test [-h] -cfgpath CLUSTERCFGPATH [-admin ADMCFG] [-user USERCFG] -lbip LBSVCIP [-testlog ANTHOSTESTLOG] [-gcs GCSBUCKET] [-serviceacct SERVICEACCT] [-loop TESTLOOP] [-abort] [-partner PARTNER] [-platformcfg PLATFORMCFGFILE] [-request TOTALREQ] [-concurrent CONCURRENT] [-maxtime MAXTIME] [-createcluster] [-createyamlfile CREATEYAMLFILE] [-newusercluster] [-clusteryaml CLUSTERYAML] [-userclustername USERCLUSTERNAME] [-userpartition USERPARTITION] [-controlplanevip CONTROLPLANEVIP] [-staticipblock STATICIPBLOCK] [-ingressvip INGRESSVIP] [-deleteusercluster] [-skipimageprepare] [-saveusercluster]
+usage: gke_onprem_test.v1.0.3 [-h] [-version] [-cfgpath CLUSTERCFGPATH]
+                              [-admin ADMCFG] [-user USERCFG] [-lbip LBSVCIP]
+                              [-testlog ANTHOSTESTLOG] [-gcs GCSBUCKET]
+                              [-serviceacct SERVICEACCT] [-loop TESTLOOP]
+                              [-abort] [-partner PARTNER]
+                              [-platformcfg PLATFORMCFGFILE]
+                              [-request TOTALREQ] [-concurrent CONCURRENT]
+                              [-maxtime MAXTIME] [-createcluster]
+                              [-createyamlfile CREATEYAMLFILE]
+                              [-newusercluster] [-clusteryaml CLUSTERYAML]
+                              [-userclustername USERCLUSTERNAME]
+                              [-userpartition USERPARTITION]
+                              [-controlplanevip CONTROLPLANEVIP]
+                              [-staticipblock STATICIPBLOCK]
+                              [-ingressvip INGRESSVIP] [-deleteusercluster]
+                              [-skipimageprepare] [-saveusercluster]
+                              [-machinesize MACHINESIZE]
+                              [-replicasize REPLICASIZE]
+                              [-pollinterval POLLINTERVAL]
+                              [-polltimes POLLTIMES]
+                              [-httpserviceimage HTTPSERVICEIMAGE]
+                              [-httpresponse HTTPRESPONSE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -version, --version   show version for this tool
+  -cfgpath CLUSTERCFGPATH, --clustercfgpath CLUSTERCFGPATH
+                        Absolute Path for cluster kubeconfig files
+  -admin ADMCFG, --adminclustercfg ADMCFG
+                        Admin Cluster kubeconfig file
+  -user USERCFG, --userclustercfg USERCFG
+                        User Cluster kubeconfig files
+  -lbip LBSVCIP, --lbsvcip LBSVCIP
+                        IP Address for Load-balancer for http service to be
+                        deployed
+  -testlog ANTHOSTESTLOG, --testlog ANTHOSTESTLOG
+                        Prefix for test log file
+  -gcs GCSBUCKET, --gcsbucket GCSBUCKET
+                        GCS bucket where test log file is to be uploaded to
+  -serviceacct SERVICEACCT, --serviceacct SERVICEACCT
+                        Google Cloud service account
+  -loop TESTLOOP, --testloop TESTLOOP
+                        number of loops test cases to be run
+  -abort, --abortonfailure
+                        flag to set whether to abort test if failure occures
+  -partner PARTNER, --partner PARTNER
+                        Anthos Partner
+  -platformcfg PLATFORMCFGFILE, --platformcfgfile PLATFORMCFGFILE
+                        Partner provided file for platform detail information
+  -request TOTALREQ, --totalrequest TOTALREQ
+                        Total Http Requests sent to the deployed service
+  -concurrent CONCURRENT, --concurrent CONCURRENT
+                        Number of concurrent sessions initialized with the
+                        deployed service
+  -maxtime MAXTIME, --maxtime MAXTIME
+                        Maximum time required to finish all requests in second
+  -createcluster, --createcluster
+                        Flag whether to create a new GKE On-Prem cluster or
+                        not, by default flag is set as False
+  -createyamlfile CREATEYAMLFILE, --createyamlfile CREATEYAMLFILE
+                        yaml file to create a new gke on-prem cluster
+                        including admin and user cluster
+  -newusercluster, --newusercluster
+                        flag whether to create a new user cluster or not, by
+                        default, flag is set to False
+  -clusteryaml CLUSTERYAML, --clusteryaml CLUSTERYAML
+                        Yaml file used to create the admin and the first user
+                        cluster
+  -userclustername USERCLUSTERNAME, --userclustername USERCLUSTERNAME
+                        New User Cluster name
+  -userpartition USERPARTITION, --userpartition USERPARTITION
+                        Partition on BIGIP
+  -controlplanevip CONTROLPLANEVIP, --controlplanevip CONTROLPLANEVIP
+                        Control Plan VIP for new cluster
+  -staticipblock STATICIPBLOCK, --staticipblock STATICIPBLOCK
+                        Yaml file for static ip block
+  -ingressvip INGRESSVIP, --ingressvip INGRESSVIP
+                        Ingress VIP for new cluster
+  -deleteusercluster, --deleteusercluster
+                        flag to set whether to delete user cluser, by default,
+                        set to False
+  -skipimageprepare, --skipimageprepare
+                        flag to skip image preparation, by default, set to
+                        False
+  -saveusercluster, --saveusercluster
+                        flag to save user cluster created by the script, by
+                        default, set to False
+  -machinesize MACHINESIZE, --machinesize MACHINESIZE
+                        number of machines to be added/removed, by default, it
+                        is set to 1
+  -replicasize REPLICASIZE, --replicasize REPLICASIZE
+                        number of replicas to be multiplied/devided, by
+                        default, it is set to 2
+  -pollinterval POLLINTERVAL, --pollinterval POLLINTERVAL
+                        pause time before the next polling, by default, it is
+                        set to 2
+  -polltimes POLLTIMES, --polltimes POLLTIMES
+                        number of times performing polling, by default, it is
+                        set to 10
+  -httpserviceimage HTTPSERVICEIMAGE, --httpserviceimage HTTPSERVICEIMAGE
+                        http service image, support both public and private
+                        registry. By default, public registry is used, and
+                        image is set to nginx:1.7.9. If you plan to use
+                        private registry, please set the correct path to
+                        access the image for http service. For example, when
+                        it is set to "10.65.122.76/nginx:1.7.9", script goes
+                        to 10.65.122.76 to fetch service image nginx:1.7.9
+  -httpresponse HTTPRESPONSE, --httpresponse HTTPRESPONSE
+                        http response used to check http server, by default,
+                        it is set to "Welcome to nginx!""
 
 Sample cmdline to run script:
 
@@ -89,6 +199,7 @@ Sample cmdline to run script:
 
 14. Run test using service yaml file in private registry and with customized http response
 ./gke_onprem_test -cfgpath /home/ubuntu/anthos_ready/kubecfg  -cfgpath /home/ubuntu/anthos_ready/kubecfg -lbip 100.115.253.154 -abort -partner google   -admin  admin-cpe-user-3-new-kubeconfig -user cpe-user-3-1-kubeconfig -light -pollinterval 6 -polltimes 3 -machinesize 2 -replicasize 3 -httpserviceimage "10.1.1.1/nginx" -httpresponse "This is my customized http response I want to check"
+
 
 
 Version History
