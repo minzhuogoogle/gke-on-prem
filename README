@@ -113,7 +113,8 @@ Script can support to apply service using image in private registry
 Script can set number of machines to be added or deleted.
 Script can set number of replicas for service to be amplified or devided.
 Script allows to set retry times and retry interval when performing polling on cluster
-Script cleanup previously deployed service in the testing namespace if it exists before starting test.
+Script cleanups previously deployed service in the testing namespace if it exists before starting test.
+Script adds user friendly check for command line.
 
 FAQ
 Contact
