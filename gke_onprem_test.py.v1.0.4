@@ -2192,15 +2192,17 @@ def generate_test_summary(testreportlog, admincluster, usercluster):
     else:
         platform_info_list = []
     testreportlog.info2file("Summary:")
+    testreportlog.info2file("    Total Tests: {}, Passed Tests: {}, Failed Tests: {}".format(len(test_results), passed_tests, failed_tests))
+
     testreportlog.info2file("    gkectl version: {}, gke_onprem_test version: {}".format(gkectl_ver, VERSION))
-    testreportlog.info2file("    partner: {}, platform detail: {}".format(partner, platformcfgfile))
+    testreportlog.info2file("    Partner: {}, Platform detail: {}".format(partner, platformcfgfile))
     if len(platform_info_list) > 0:
         for eachline in platform_info_list:
-            testreportlog.info2file("      {}".format(eachline.strip()))
+             testreportlog.info2file("                           {}".format(eachline.strip()))
 
-    testreportlog.info2file("    Traffic Test Profile: Total Requests: {}".format(test_cfg['totalreq']))
-    testreportlog.info2file("                          Concurrent Sessions: {}".format(test_cfg['concurrent']))
-    testreportlog.info2file("                          Expect to finish all requests in {} seconds".format(test_cfg['maxtime']))
+    testreportlog.info2file("    Traffic test profile:  Total Requests: {}".format(test_cfg['totalreq']))
+    testreportlog.info2file("                           Concurrent Sessions: {}".format(test_cfg['concurrent']))
+    testreportlog.info2file("                           Expect to finish all requests in {} seconds".format(test_cfg['maxtime']))
 
     if usercluster and admincluster:
         testreportlog.info2file("    admin cluster version: {}, user cluster version: {}".format(admincluster.control_version, usercluster.control_version))
@@ -2209,7 +2211,6 @@ def generate_test_summary(testreportlog, admincluster, usercluster):
     elif not admincluster and usercluster:
         testreportlog.info2file("    user cluster version: {}".format(usercluster.control_version))
 
-    testreportlog.info2file("    Total Tests: {}, Passed Tests: {}, Failed Tests: {}".format(len(test_results), passed_tests, failed_tests))
     testreportlog.info2file(padding)
     for eachcase in test_results:
         testreportlog.info2file("      {}".format(':'.join(eachcase)))
