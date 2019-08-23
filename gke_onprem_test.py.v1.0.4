@@ -1925,8 +1925,10 @@ def user_cluster_tests(userclusterlist, gcpregisteredclusters, testreportlog):
     lightmode = test_cfg['lightmode']
     abortonfailure = test_cfg['abortonfailure']
     gcpproject = test_cfg['gcpproject']
-    serviceacct = "{}/{}".format(test_cfg['clustercfgpath'], test_cfg['serviceacct'])
-
+    if test_cfg['serviceacct']:
+        serviceacct = "{}/{}".format(test_cfg['clustercfgpath'], test_cfg['serviceacct'])
+    else:
+        serviceacct = None
     for i in range(testloop, 0, -1):
         print "Start Testing Loop {}".format(i)
         for usercluster, gcpregisteredcluster in zip(userclusterlist, gcpregisteredclusters):
