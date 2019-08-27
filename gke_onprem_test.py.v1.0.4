@@ -1981,7 +1981,7 @@ def gcp_connector_test(usercluster, gcpregisteredcluster, testreportlog):
     pattern1_match = re.compile(r"gke-connect\s+Active")
     pattern2_match = re.compile(r"gke-connect-[0-9]+\s+Active")
 
-    if pattern1_match.search(retoutput) != None and pattern2_match.search(retoutput) != None:
+    if pattern1_match.search(retoutput) != None or pattern2_match.search(retoutput) != None:
         test_result = "PASS"
     testreportlog.info2file("Test_Case: {}: {}: {}".format(test_name, test_result, test_detail))
     test_results.append([test_name, test_result, test_detail])
@@ -2329,7 +2329,7 @@ def testargparser():
         if test_cfg['newusercluster']:
             if test_cfg['clustercfgpath'] == None or test_cfg['userclustername'] == None or test_cfg['userpartition'] == None or test_cfg['controlplanevip'] == None or test_cfg['ingressvip'] == None or (test_cfg['createyamlfile'] == None and test_cfg['createcluster']) or (test_cfg['clusteryaml']==None  and (not test_cfg['createcluster'])):
                 print "Need to provide information to create user cluster. Please run tool with -help for detail"
-                sys.exit(1)
+#                sys.exit(1)
             else:
                 return
         if test_cfg['lbsvcip'] == None:
